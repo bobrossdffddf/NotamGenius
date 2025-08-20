@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -14,6 +14,7 @@ const client = new Client({
 
 // Create commands collection
 client.commands = new Collection();
+const commandsArray = [];
 
 // Load commands
 const commandsPath = path.join(__dirname, 'commands');
@@ -25,6 +26,7 @@ for (const file of commandFiles) {
     
     if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
+        commandsArray.push(command.data.toJSON());
         console.log(`✅ Loaded command: ${command.data.name}`);
     } else {
         console.log(`⚠️ Command at ${filePath} is missing required "data" or "execute" property.`);
@@ -32,9 +34,25 @@ for (const file of commandFiles) {
 }
 
 // Bot ready event
-client.once(Events.ClientReady, readyClient => {
+client.once(Events.ClientReady, async readyClient => {
     console.log(`🤖 Discord bot is ready! Logged in as ${readyClient.user.tag}`);
     console.log(`📡 Serving ${client.guilds.cache.size} servers`);
+    
+    // Register slash commands globally
+    try {
+        console.log('🔄 Registering slash commands...');
+        
+        const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
+        
+        const data = await rest.put(
+            Routes.applicationCommands(readyClient.user.id),
+            { body: commandsArray }
+        );
+        
+        console.log(`✅ Successfully registered ${data.length} slash command(s)!`);
+    } catch (error) {
+        console.error('❌ Error registering slash commands:', error);
+    }
 });
 
 // Handle slash command interactions
