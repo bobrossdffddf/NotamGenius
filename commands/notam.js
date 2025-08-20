@@ -68,118 +68,98 @@ module.exports = {
     },
 
     async startNotamCreation(interaction) {
-        const userId = interaction.user.id;
-        
-        // Initialize form data
-        formData.set(userId, {
-            operationName: '',
-            operationLeader: '',
-            operationTime: '',
-            operationJoinTime: '',
-            operationDetails: '',
-            positions: {},
-            additionalNotes: '',
-            currentStep: 0
-        });
-
-        await this.showFormStep(interaction, userId, 0);
-    },
-
-    async showFormStep(interaction, userId, step) {
-        const fields = getNotamFields();
-        const currentField = fields[step];
-        
-        if (!currentField) {
-            // All steps completed, show preview
-            await this.showPreview(interaction, userId);
-            return;
-        }
-
         const modal = new ModalBuilder()
-            .setCustomId(`notam_form_${userId}_${step}`)
-            .setTitle(`NOTAM Creation - Step ${step + 1}/${fields.length}`);
+            .setCustomId(`notam_single_form`)
+            .setTitle('Create NOTAM - Fill All Fields');
 
-        const textInput = new TextInputBuilder()
-            .setCustomId('field_value')
-            .setLabel(currentField.label)
-            .setStyle(currentField.multiline ? TextInputStyle.Paragraph : TextInputStyle.Short)
-            .setPlaceholder(currentField.placeholder || '')
-            .setRequired(currentField.required || false);
+        // Operation Name
+        const operationNameInput = new TextInputBuilder()
+            .setCustomId('operation_name')
+            .setLabel('Operation Name')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., "Anchorage Resolution"')
+            .setRequired(true)
+            .setMaxLength(100);
 
-        if (currentField.maxLength) {
-            textInput.setMaxLength(currentField.maxLength);
-        }
+        // Operation Leader
+        const operationLeaderInput = new TextInputBuilder()
+            .setCustomId('operation_leader')
+            .setLabel('Operation Leader')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., @alexbillyjoil or TBD')
+            .setRequired(true)
+            .setMaxLength(100);
 
-        const actionRow = new ActionRowBuilder().addComponents(textInput);
-        modal.addComponents(actionRow);
+        // Operation Time & Date
+        const operationTimeInput = new TextInputBuilder()
+            .setCustomId('operation_time')
+            .setLabel('Operation Time & Date')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., "December 15, 2024 - 1400Z" or "TBD"')
+            .setRequired(true)
+            .setMaxLength(200);
+
+        // Operation Details
+        const operationDetailsInput = new TextInputBuilder()
+            .setCustomId('operation_details')
+            .setLabel('Operation Details')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Detailed description of the operation...')
+            .setRequired(true)
+            .setMaxLength(2000);
+
+        // Operation Positions
+        const positionsInput = new TextInputBuilder()
+            .setCustomId('operation_positions')
+            .setLabel('Operation Positions (Role: Person format)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Air Force One Pilot: @alexbillyjoil\nMarine One Pilot: TBD\nPOTUS: TBD')
+            .setRequired(true)
+            .setMaxLength(1500);
+
+        const row1 = new ActionRowBuilder().addComponents(operationNameInput);
+        const row2 = new ActionRowBuilder().addComponents(operationLeaderInput);
+        const row3 = new ActionRowBuilder().addComponents(operationTimeInput);
+        const row4 = new ActionRowBuilder().addComponents(operationDetailsInput);
+        const row5 = new ActionRowBuilder().addComponents(positionsInput);
+
+        modal.addComponents(row1, row2, row3, row4, row5);
 
         await interaction.showModal(modal);
     },
 
     async handleModal(interaction) {
-        if (!interaction.customId.startsWith('notam_form_')) return;
+        if (interaction.customId !== 'notam_single_form') return;
 
-        const [, , userId, step] = interaction.customId.split('_');
-        const stepNum = parseInt(step);
-        const fieldValue = interaction.fields.getTextInputValue('field_value');
+        // Get all form values
+        const operationName = interaction.fields.getTextInputValue('operation_name');
+        const operationLeader = interaction.fields.getTextInputValue('operation_leader');
+        const operationTime = interaction.fields.getTextInputValue('operation_time');
+        const operationDetails = interaction.fields.getTextInputValue('operation_details');
+        const positionsText = interaction.fields.getTextInputValue('operation_positions');
+
+        // Parse positions
+        const positions = this.parsePositions(positionsText);
+
+        // Create NOTAM data
+        const notamData = {
+            operationName,
+            operationLeader,
+            operationTime,
+            operationJoinTime: 'TBD', // Set default since we simplified the form
+            operationDetails,
+            positions,
+            additionalNotes: ''
+        };
+
+        // Generate the NOTAM
+        const notamContent = generateNotam(notamData);
         
-        // Store the field value
-        const userData = formData.get(userId);
-        if (!userData) {
-            await interaction.reply({ content: '❌ Form session expired. Please start over.', flags: 64 });
-            return;
-        }
-
-        const fields = getNotamFields();
-        const currentField = fields[stepNum];
-        
-        // Update form data based on field type
-        switch (currentField.key) {
-            case 'operationName':
-                userData.operationName = fieldValue;
-                break;
-            case 'operationLeader':
-                userData.operationLeader = fieldValue;
-                break;
-            case 'operationTime':
-                userData.operationTime = fieldValue;
-                break;
-            case 'operationJoinTime':
-                userData.operationJoinTime = fieldValue;
-                break;
-            case 'operationDetails':
-                userData.operationDetails = fieldValue;
-                break;
-            case 'positions':
-                userData.positions = this.parsePositions(fieldValue);
-                break;
-            case 'additionalNotes':
-                userData.additionalNotes = fieldValue;
-                break;
-        }
-
-        userData.currentStep = stepNum + 1;
-        formData.set(userId, userData);
-
-        // Show next step or preview
-        if (stepNum + 1 < fields.length) {
-            // For modal submissions, reply first then show next modal via button
-            const nextField = fields[stepNum + 1];
-            await interaction.reply({
-                content: `✅ **${currentField.label}** saved!\n\nClick the button below to continue to: **${nextField.label}**`,
-                components: [
-                    new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(`notam_continue_${userId}_${stepNum + 1}`)
-                            .setLabel(`Continue to ${nextField.label}`)
-                            .setStyle(ButtonStyle.Primary)
-                    )
-                ],
-                flags: 64
-            });
-        } else {
-            await this.showPreview(interaction, userId);
-        }
+        // Reply with the generated NOTAM in a copyable code block
+        await interaction.reply({
+            content: `# ✅ NOTAM Generated Successfully!\n\n**Copy the text below:**\n\`\`\`\n${notamContent}\n\`\`\``,
+            flags: 64
+        });
     },
 
     parsePositions(positionsText) {
@@ -204,129 +184,4 @@ module.exports = {
         return positions;
     },
 
-    async showPreview(interaction, userId) {
-        const userData = formData.get(userId);
-        if (!userData) {
-            await interaction.reply({ content: '❌ Form session expired. Please start over.', ephemeral: true });
-            return;
-        }
-
-        const notamContent = generateNotam(userData);
-        
-        const previewEmbed = new EmbedBuilder()
-            .setTitle('📋 NOTAM Preview')
-            .setDescription('```\n' + notamContent + '\n```')
-            .setColor(0x00FF00)
-            .setFooter({ text: 'Review your NOTAM and choose an action below' });
-
-        const actionRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`notam_post_${userId}`)
-                    .setLabel('📤 Post NOTAM')
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId(`notam_edit_${userId}`)
-                    .setLabel('✏️ Edit NOTAM')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId(`notam_cancel_${userId}`)
-                    .setLabel('❌ Cancel')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-        await interaction.reply({ 
-            embeds: [previewEmbed], 
-            components: [actionRow], 
-            flags: 64
-        });
-    },
-
-    async handleButton(interaction) {
-        if (!interaction.customId.startsWith('notam_')) return;
-
-        const [action, subaction, userId, step] = interaction.customId.split('_');
-        
-        if (interaction.user.id !== userId) {
-            await interaction.reply({ content: '❌ You can only interact with your own NOTAM forms.', flags: 64 });
-            return;
-        }
-
-        const userData = formData.get(userId);
-        if (!userData) {
-            await interaction.reply({ content: '❌ Form session expired. Please start over.', flags: 64 });
-            return;
-        }
-
-        switch (subaction) {
-            case 'post':
-                await this.postNotam(interaction, userId, userData);
-                break;
-            case 'edit':
-                await this.editNotam(interaction, userId);
-                break;
-            case 'cancel':
-                await this.cancelNotam(interaction, userId);
-                break;
-            case 'continue':
-                // Show next form step
-                const stepNum = parseInt(step);
-                await interaction.update({
-                    content: 'Loading next form...',
-                    components: []
-                });
-                await this.showFormStep(interaction, userId, stepNum);
-                break;
-        }
-    },
-
-    async postNotam(interaction, userId, userData) {
-        const notamContent = generateNotam(userData);
-        
-        // Post the NOTAM to the channel
-        await interaction.update({
-            content: '✅ **NOTAM Posted Successfully**',
-            embeds: [],
-            components: []
-        });
-
-        // Send the actual NOTAM
-        await interaction.followUp({
-            content: `# 🎖️ MILITARY NOTAM\n\`\`\`\n${notamContent}\n\`\`\``,
-            ephemeral: false
-        });
-
-        // Clean up form data
-        formData.delete(userId);
-    },
-
-    async editNotam(interaction, userId) {
-        // Reset form data to first step
-        const userData = formData.get(userId);
-        userData.currentStep = 0;
-        formData.set(userId, userData);
-        
-        await interaction.update({
-            content: '✏️ **Editing NOTAM**\nClick the button below to restart the form.',
-            embeds: [],
-            components: [
-                new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`notam_continue_${userId}_0`)
-                        .setLabel('Start Form Over')
-                        .setStyle(ButtonStyle.Primary)
-                )
-            ]
-        });
-    },
-
-    async cancelNotam(interaction, userId) {
-        formData.delete(userId);
-        
-        await interaction.update({
-            content: '❌ **NOTAM Creation Cancelled**',
-            embeds: [],
-            components: []
-        });
-    }
 };
