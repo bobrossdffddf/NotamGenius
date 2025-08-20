@@ -8,17 +8,7 @@ const formData = new Map();
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('notam')
-        .setDescription('Generate a military-style NOTAM (Admin only)')
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('create')
-                .setDescription('Create a new NOTAM')
-        )
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('help')
-                .setDescription('Show NOTAM creation help')
-        ),
+        .setDescription('Create a military-style NOTAM (Admin only)'),
 
     async execute(interaction) {
         // Check admin permissions
@@ -30,44 +20,7 @@ module.exports = {
             return;
         }
 
-        const subcommand = interaction.options.getSubcommand();
-
-        if (subcommand === 'help') {
-            await this.showHelp(interaction);
-        } else if (subcommand === 'create') {
-            await this.startNotamCreation(interaction);
-        }
-    },
-
-    async showHelp(interaction) {
-        const helpEmbed = new EmbedBuilder()
-            .setTitle('🎖️ NOTAM Generator Help')
-            .setDescription('This bot generates military-style NOTAMs (Notice to Airmen) for operation briefings.')
-            .addFields(
-                {
-                    name: '📋 Available Commands',
-                    value: '`/notam create` - Start creating a new NOTAM\n`/notam help` - Show this help message'
-                },
-                {
-                    name: '🔐 Permissions',
-                    value: 'Only server administrators can create NOTAMs'
-                },
-                {
-                    name: '📝 Form Fields',
-                    value: 'The form will guide you through filling in:\n• Operation name\n• Operation leader\n• Time & date information\n• Operation details\n• Position assignments\n• Additional notes'
-                },
-                {
-                    name: '⚡ Usage',
-                    value: '1. Run `/notam create`\n2. Fill out the interactive forms\n3. Review and confirm your NOTAM\n4. The formatted NOTAM will be posted'
-                }
-            )
-            .setColor(0x0099FF)
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [helpEmbed], flags: 64 });
-    },
-
-    async startNotamCreation(interaction) {
+        // Go directly to form creation
         const modal = new ModalBuilder()
             .setCustomId(`notam_single_form`)
             .setTitle('Create NOTAM - Fill All Fields');
