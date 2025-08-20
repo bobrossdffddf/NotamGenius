@@ -25,7 +25,7 @@ module.exports = {
         if (!checkAdminPermissions(interaction.member)) {
             await interaction.reply({
                 content: '❌ **Access Denied**\nOnly administrators can create NOTAMs.',
-                ephemeral: true
+                flags: 64
             });
             return;
         }
@@ -64,7 +64,7 @@ module.exports = {
             .setColor(0x0099FF)
             .setTimestamp();
 
-        await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [helpEmbed], flags: 64 });
     },
 
     async startNotamCreation(interaction) {
@@ -126,7 +126,7 @@ module.exports = {
         // Store the field value
         const userData = formData.get(userId);
         if (!userData) {
-            await interaction.reply({ content: '❌ Form session expired. Please start over.', ephemeral: true });
+            await interaction.reply({ content: '❌ Form session expired. Please start over.', flags: 64 });
             return;
         }
 
@@ -163,7 +163,20 @@ module.exports = {
 
         // Show next step or preview
         if (stepNum + 1 < fields.length) {
-            await this.showFormStep(interaction, userId, stepNum + 1);
+            // For modal submissions, reply first then show next modal via button
+            const nextField = fields[stepNum + 1];
+            await interaction.reply({
+                content: `✅ **${currentField.label}** saved!\n\nClick the button below to continue to: **${nextField.label}**`,
+                components: [
+                    new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`notam_continue_${userId}_${stepNum + 1}`)
+                            .setLabel(`Continue to ${nextField.label}`)
+                            .setStyle(ButtonStyle.Primary)
+                    )
+                ],
+                flags: 64
+            });
         } else {
             await this.showPreview(interaction, userId);
         }
@@ -225,23 +238,23 @@ module.exports = {
         await interaction.reply({ 
             embeds: [previewEmbed], 
             components: [actionRow], 
-            ephemeral: true 
+            flags: 64
         });
     },
 
     async handleButton(interaction) {
         if (!interaction.customId.startsWith('notam_')) return;
 
-        const [action, subaction, userId] = interaction.customId.split('_');
+        const [action, subaction, userId, step] = interaction.customId.split('_');
         
         if (interaction.user.id !== userId) {
-            await interaction.reply({ content: '❌ You can only interact with your own NOTAM forms.', ephemeral: true });
+            await interaction.reply({ content: '❌ You can only interact with your own NOTAM forms.', flags: 64 });
             return;
         }
 
         const userData = formData.get(userId);
         if (!userData) {
-            await interaction.reply({ content: '❌ Form session expired. Please start over.', ephemeral: true });
+            await interaction.reply({ content: '❌ Form session expired. Please start over.', flags: 64 });
             return;
         }
 
@@ -254,6 +267,15 @@ module.exports = {
                 break;
             case 'cancel':
                 await this.cancelNotam(interaction, userId);
+                break;
+            case 'continue':
+                // Show next form step
+                const stepNum = parseInt(step);
+                await interaction.update({
+                    content: 'Loading next form...',
+                    components: []
+                });
+                await this.showFormStep(interaction, userId, stepNum);
                 break;
         }
     },
@@ -279,14 +301,23 @@ module.exports = {
     },
 
     async editNotam(interaction, userId) {
+        // Reset form data to first step
+        const userData = formData.get(userId);
+        userData.currentStep = 0;
+        formData.set(userId, userData);
+        
         await interaction.update({
-            content: '✏️ **Editing NOTAM**\nStarting form from the beginning...',
+            content: '✏️ **Editing NOTAM**\nClick the button below to restart the form.',
             embeds: [],
-            components: []
+            components: [
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`notam_continue_${userId}_0`)
+                        .setLabel('Start Form Over')
+                        .setStyle(ButtonStyle.Primary)
+                )
+            ]
         });
-
-        // Reset to first step
-        await this.showFormStep(interaction, userId, 0);
     },
 
     async cancelNotam(interaction, userId) {
