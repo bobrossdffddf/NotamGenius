@@ -13,7 +13,7 @@ const operationSchedules = new Map();
 const TARGET_ROLE_ID = '1409027687736938537';
 
 // Operation details channel ID
-const OPERATION_DETAILS_CHANNEL_ID = '1403996752314372117';
+const OPERATION_DETAILS_CHANNEL_ID = '1403915496256176148';
 
 // Certification role IDs
 const CERTIFICATION_ROLES = {
@@ -1376,9 +1376,12 @@ module.exports = {
             return;
         }
 
-        if (interaction.customId.startsWith('edit_')) {
-            const operationId = interaction.customId.split('_').slice(1).join('_');
+        if (interaction.customId.startsWith('edit_details_')) {
+            const operationId = interaction.customId.replace('edit_details_', '');
             const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+            
+            console.log(`🔍 Edit details button - Operation ID: ${operationId}`);
+            console.log(`🔍 Found operation:`, operation ? operation.name : 'Not found');
 
             if (!operation) {
                 await interaction.reply({
@@ -1388,63 +1391,80 @@ module.exports = {
                 return;
             }
 
-            // Create edit form modal
+            // Create edit form modal for details
             const modal = new ModalBuilder()
-                .setCustomId(`edit_form_${operationId}`)
-                .setTitle(`Edit Operation: ${operation.name}`);
+                .setCustomId(`edit_details_form_${operationId}`)
+                .setTitle(`Edit Details: ${operation.name}`);
 
-            const nameInput = new TextInputBuilder()
-                .setCustomId('edit_name')
-                .setLabel('Operation Name')
-                .setStyle(TextInputStyle.Short)
-                .setValue(operation.name)
+            const detailsInput = new TextInputBuilder()
+                .setCustomId('edit_details_input')
+                .setLabel('Operation Details')
+                .setStyle(TextInputStyle.Paragraph)
+                .setValue(operation.details)
                 .setRequired(true)
-                .setMaxLength(50);
-
-            const timeInput = new TextInputBuilder()
-                .setCustomId('edit_time')
-                .setLabel('Operation Time')
-                .setStyle(TextInputStyle.Short)
-                .setValue(operation.time)
-                .setRequired(true)
-                .setMaxLength(50);
+                .setMaxLength(1500);
 
             const leaderInput = new TextInputBuilder()
-                .setCustomId('edit_leader')
+                .setCustomId('edit_leader_input')
                 .setLabel('Operation Leader')
                 .setStyle(TextInputStyle.Short)
                 .setValue(operation.leader)
                 .setRequired(true)
                 .setMaxLength(100);
 
-            const detailsInput = new TextInputBuilder()
-                .setCustomId('edit_details')
-                .setLabel('Operation Details')
-                .setStyle(TextInputStyle.Paragraph)
-                .setValue(operation.details)
+            const timeInput = new TextInputBuilder()
+                .setCustomId('edit_time_input')
+                .setLabel('Operation Time')
+                .setStyle(TextInputStyle.Short)
+                .setValue(operation.time)
                 .setRequired(true)
-                .setMaxLength(1000);
+                .setMaxLength(100);
 
-            const positionsInput = new TextInputBuilder()
-                .setCustomId('edit_positions')
-                .setLabel('Positions')
-                .setStyle(TextInputStyle.Paragraph)
-                .setValue(operation.availableJobs.map(job => typeof job === 'object' ? job.name : job).join(', '))
-                .setRequired(true)
-                .setMaxLength(500);
-
-            const firstRow = new ActionRowBuilder().addComponents(nameInput);
-            const secondRow = new ActionRowBuilder().addComponents(timeInput);
-            const thirdRow = new ActionRowBuilder().addComponents(leaderInput);
-            const fourthRow = new ActionRowBuilder().addComponents(detailsInput);
-            const fifthRow = new ActionRowBuilder().addComponents(positionsInput);
-
-            modal.addComponents(firstRow, secondRow, thirdRow, fourthRow, fifthRow);
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(detailsInput),
+                new ActionRowBuilder().addComponents(leaderInput),
+                new ActionRowBuilder().addComponents(timeInput)
+            );
 
             await interaction.showModal(modal);
-        } else if (interaction.customId.startsWith('manage_assignments_')) {
-            const operationId = interaction.customId.split('_').slice(2).join('_');
+        } else if (interaction.customId.startsWith('edit_positions_')) {
+            const operationId = interaction.customId.replace('edit_positions_', '');
             const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+            
+            console.log(`🔍 Edit positions button - Operation ID: ${operationId}`);
+            console.log(`🔍 Found operation:`, operation ? operation.name : 'Not found');
+            
+            if (!operation) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation not found.',
+                    flags: 64
+                });
+                return;
+            }
+            
+            // Handle position editing - show modal for positions
+            const modal = new ModalBuilder()
+                .setCustomId(`edit_positions_form_${operationId}`)
+                .setTitle(`Edit Positions: ${operation.name}`);
+            
+            const positionsInput = new TextInputBuilder()
+                .setCustomId('edit_positions_input')
+                .setLabel('Available Positions')
+                .setStyle(TextInputStyle.Paragraph)
+                .setValue(operation.availableJobs.map(job => typeof job === 'object' ? `${job.name}:${job.maxCount || 'unlimited'}` : job).join('\n'))
+                .setPlaceholder('Enter positions, one per line (e.g., "F-22 Pilot:2" or "Ground Crew:unlimited")')
+                .setRequired(true)
+                .setMaxLength(1000);
+            
+            modal.addComponents(new ActionRowBuilder().addComponents(positionsInput));
+            await interaction.showModal(modal);
+            
+        } else if (interaction.customId.startsWith('manage_assignments_')) {
+            const operationId = interaction.customId.replace('manage_assignments_', '');
+            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+            
+            console.log(`🔍 Manage assignments button - Operation ID: ${operationId}`);
+            console.log(`🔍 Found operation:`, operation ? operation.name : 'Not found');
 
             if (!operation) {
                 await interaction.reply({
@@ -1458,8 +1478,6 @@ module.exports = {
             if (!operation.jobAssignments) {
                 operation.jobAssignments = new Map();
             }
-            
-            console.log(`🔍 Debug - Operation ${operation.name} has ${operation.jobAssignments.size} assignments:`, Array.from(operation.jobAssignments.entries()));
             
             let assignmentsList = '';
             if (operation.jobAssignments && operation.jobAssignments.size > 0) {
@@ -1599,64 +1617,75 @@ module.exports = {
             return;
         }
 
-        const operationId = interaction.customId.split('_').slice(2).join('_');
-        const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+        // Handle different modal types
+        if (interaction.customId.startsWith('edit_details_form_')) {
+            const operationId = interaction.customId.replace('edit_details_form_', '');
+            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
 
-        if (!operation) {
+            if (!operation) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation not found.',
+                    flags: 64
+                });
+                return;
+            }
+
+            const newDetails = interaction.fields.getTextInputValue('edit_details_input');
+            const newLeader = interaction.fields.getTextInputValue('edit_leader_input');
+            const newTime = interaction.fields.getTextInputValue('edit_time_input');
+
+            // Update operation data
+            operation.details = newDetails;
+            operation.leader = newLeader;
+            operation.time = newTime;
+
+            // Save to disk
+            await saveOperations();
+
             await interaction.reply({
-                content: '❌ **Error**: Operation not found.',
+                content: `✅ **Operation Details Updated!**\n\n**Operation**: ${operation.name}\n**New Leader**: ${newLeader}\n**New Time**: ${newTime}\n\nDetails have been updated successfully.`,
                 flags: 64
             });
-            return;
-        }
 
-        const newName = interaction.fields.getTextInputValue('edit_name');
-        const newTime = interaction.fields.getTextInputValue('edit_time');
-        const newLeader = interaction.fields.getTextInputValue('edit_leader');
-        const newDetails = interaction.fields.getTextInputValue('edit_details');
-        const newPositionsString = interaction.fields.getTextInputValue('edit_positions');
+        } else if (interaction.customId.startsWith('edit_positions_form_')) {
+            const operationId = interaction.customId.replace('edit_positions_form_', '');
+            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
 
-        // Parse positions
-        const newPositions = newPositionsString.split(',').map(pos => pos.trim()).filter(pos => pos.length > 0);
-
-        // Update operation data
-        operation.name = newName;
-        operation.time = newTime;
-        operation.leader = newLeader;
-        operation.details = newDetails;
-        operation.availableJobs = newPositions;
-
-        // Save to disk
-        await saveOperations();
-
-        // Update the operation messages if they exist
-        try {
-            if (operation.detailsMessageId && operation.infoChannelId) {
-                const channel = interaction.guild.channels.cache.get(operation.infoChannelId);
-                if (channel) {
-                    const message = await channel.messages.fetch(operation.detailsMessageId);
-                    if (message) {
-                        // Update the embed with new information
-                        const updatedEmbed = new EmbedBuilder()
-                            .setTitle(`🚁 **${newName}**`)
-                            .setDescription(`**🔴 Operation Time:** ${newTime}\n**👨‍✈️ Operation Leader:** ${newLeader}\n\n**📡 Details:**\n${newDetails}\n\n**📍 Positions:**\n${newPositions.map(pos => `• ${pos}`).join('\n')}\n\n**📝 Additional Notes:**\n${operation.notes || 'None'}`)
-                            .setColor(0xFF4500)
-                            .setTimestamp();
-
-                        await message.edit({ embeds: [updatedEmbed] });
-                    }
-                }
+            if (!operation) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation not found.',
+                    flags: 64
+                });
+                return;
             }
-        } catch (error) {
-            console.error('Error updating operation message:', error);
+
+            const newPositionsString = interaction.fields.getTextInputValue('edit_positions_input');
+            
+            // Parse positions with capacity limits
+            const newPositions = newPositionsString.split('\n').map(line => {
+                line = line.trim();
+                if (line.includes(':')) {
+                    const [name, count] = line.split(':');
+                    const maxCount = count.trim() === 'unlimited' ? null : parseInt(count.trim()) || null;
+                    return { name: name.trim(), maxCount };
+                } else {
+                    return { name: line, maxCount: null };
+                }
+            }).filter(job => job.name.length > 0);
+
+            // Update operation data
+            operation.availableJobs = newPositions;
+
+            // Save to disk
+            await saveOperations();
+
+            await interaction.reply({
+                content: `✅ **Positions Updated!**\n\n**Operation**: ${operation.name}\n**New Positions**: ${newPositions.map(job => job.name).join(', ')}\n\nPositions have been updated successfully.`,
+                flags: 64
+            });
         }
 
-        await interaction.reply({
-            content: `✅ **Operation Updated Successfully!**\n\n**Operation**: ${newName}\n**New Time**: ${newTime}\n**New Leader**: ${newLeader}\n\nAll changes have been saved and the operation details have been updated.`,
-            flags: 64
-        });
-
-        console.log(`✏️ Operation edited by ${interaction.user.tag}: ${newName}`);
+        console.log(`✏️ Operation edited by ${interaction.user.tag}`);
     },
 
     async handleAssignmentButtons(interaction) {
@@ -1670,7 +1699,7 @@ module.exports = {
         }
 
         if (interaction.customId.startsWith('remove_assignment_')) {
-            const operationId = interaction.customId.split('_').slice(2).join('_');
+            const operationId = interaction.customId.replace('remove_assignment_', '');
             const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
 
             if (!operation) {
@@ -1715,13 +1744,13 @@ module.exports = {
             });
         } else if (interaction.customId.startsWith('refresh_assignments_')) {
             // Refresh the assignments display
-            const operationId = interaction.customId.split('_').slice(2).join('_');
+            const operationId = interaction.customId.replace('refresh_assignments_', '');
             await this.handleEditButton({ ...interaction, customId: `manage_assignments_${operationId}` });
         }
     },
 
     async handleRemoveAssignment(interaction) {
-        const operationId = interaction.customId.split('_').slice(2).join('_');
+        const operationId = interaction.customId.replace('select_remove_', '');
         const userIdToRemove = interaction.values[0];
         const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
 
