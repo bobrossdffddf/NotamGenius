@@ -45,37 +45,36 @@ client.once(Events.ClientReady, async readyClient => {
     const RosterUpdater = require('./utils/roster-updater');
     new RosterUpdater(readyClient);
     
-    // Register slash commands globally
+    // Register slash commands to each guild (instant registration)
     try {
-        console.log('🗑️ Clearing existing commands...');
+        console.log('🔄 Registering slash commands to guilds...');
         
         const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
         
-        // Clear all existing commands (global and guild-specific)
-        await rest.put(
-            Routes.applicationCommands(readyClient.user.id),
-            { body: [] }
-        );
+        let totalRegistered = 0;
         
-        // Also clear guild-specific commands for each guild
+        // Register commands to each guild for instant availability
         for (const guild of readyClient.guilds.cache.values()) {
-            await rest.put(
-                Routes.applicationGuildCommands(readyClient.user.id, guild.id),
-                { body: [] }
-            );
+            try {
+                console.log(`📝 Registering commands for guild: ${guild.name} (${guild.id})`);
+                
+                const data = await rest.put(
+                    Routes.applicationGuildCommands(readyClient.user.id, guild.id),
+                    { body: commandsArray }
+                );
+                
+                console.log(`✅ Registered ${data.length} commands for ${guild.name}`);
+                totalRegistered += data.length;
+            } catch (guildError) {
+                console.error(`❌ Failed to register commands for guild ${guild.name}:`, guildError);
+            }
         }
         
-        console.log('🔄 Registering new slash commands...');
+        console.log(`🎉 Successfully registered ${totalRegistered} total command instances across all guilds!`);
+        console.log('💡 Commands should appear instantly in Discord servers');
         
-        // Register new commands
-        const data = await rest.put(
-            Routes.applicationCommands(readyClient.user.id),
-            { body: commandsArray }
-        );
-        
-        console.log(`✅ Successfully registered ${data.length} slash command(s)!`);
     } catch (error) {
-        console.error('❌ Error registering slash commands:', error);
+        console.error('❌ Error during command registration:', error);
     }
 });
 
