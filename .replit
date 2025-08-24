@@ -1,4 +1,5 @@
 modules = ["nodejs-20"]
+run = "node index.js"
 [agent]
 expertMode = true
 
@@ -17,25 +18,16 @@ author = "agent"
 task = "workflow.run"
 args = "Discord Bot"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "discord-bot"
-
 [[workflows.workflow]]
 name = "Discord Bot"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install && node index.js"
-
 [workflows.workflow.metadata]
 outputType = "console"
 
-[[workflows.workflow]]
-name = "discord-bot"
-author = "agent"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install discord.js dotenv && node index.js"
+args = "node index.js"
+
+[deployment]
+run = ["sh", "-c", "node index.js"]
