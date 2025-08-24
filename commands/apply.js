@@ -21,6 +21,18 @@ const config = {
         'ground-ops': {
             name: 'Ground Operations Certified',
             roleId: '1408995373455904789'
+        },
+        'f22': {
+            name: 'F-22 Raptor Certified',
+            roleId: '1409300377463165079'
+        },
+        'f35': {
+            name: 'F-35 Lightning II Certified',
+            roleId: '1409300434967072888'
+        },
+        'f16': {
+            name: 'F-16 Fighting Falcon Certified',
+            roleId: '1409300512062574663'
         }
     }
 };
@@ -38,7 +50,10 @@ module.exports = {
                     { name: 'ATC Certified', value: 'atc' },
                     { name: 'USAF | Air Force One Certified', value: 'af1' },
                     { name: 'USMC | Marine One Certified', value: 'marine-one' },
-                    { name: 'Ground Operations Certified', value: 'ground-ops' }
+                    { name: 'Ground Operations Certified', value: 'ground-ops' },
+                    { name: 'F-22 Raptor Certified', value: 'f22' },
+                    { name: 'F-35 Lightning II Certified', value: 'f35' },
+                    { name: 'F-16 Fighting Falcon Certified', value: 'f16' }
                 )
         ),
 

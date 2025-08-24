@@ -149,6 +149,21 @@ module.exports = {
                         .setDescription('Operation ID to edit')
                         .setRequired(true)
                 )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('announce')
+                .setDescription('Send announcement to operation participants (Admin only)')
+                .addStringOption(option =>
+                    option.setName('operation_id')
+                        .setDescription('Operation ID to announce to')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('message')
+                        .setDescription('Announcement message')
+                        .setRequired(true)
+                )
         ),
 
     async execute(interaction) {
@@ -166,6 +181,8 @@ module.exports = {
             await this.handleOperationSchedule(interaction);
         } else if (interaction.options.getSubcommand() === 'edit') {
             await this.handleOperationEdit(interaction);
+        } else if (interaction.options.getSubcommand() === 'announce') {
+            await this.handleOperationAnnounce(interaction);
         }
     },
 
@@ -592,20 +609,22 @@ module.exports = {
                 // Create date object in the specified timezone
                 let date;
                 if (timezone === 'EST' || timezone === 'EDT') {
-                    // EST is UTC-5, EDT is UTC-4
-                    const utcOffset = timezone === 'EST' ? -5 : -4;
-                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    // Convert to UTC by adding the offset hours (EST -5 means add 5 hours to get UTC)
-                    date.setTime(date.getTime() + (Math.abs(utcOffset) * 60 * 60 * 1000));
+                    // EST is UTC-5, EDT is UTC-4 - create date in local timezone first
+                    const utcOffset = timezone === 'EST' ? 5 : 4;
+                    date = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+                    // Convert local time to UTC by adding the offset
+                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000));
                 } else if (timezone === 'PST' || timezone === 'PDT') {
-                    // PST is UTC-8, PDT is UTC-7
-                    const utcOffset = timezone === 'PST' ? -8 : -7;
-                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    // Convert to UTC by adding the offset hours (PST -8 means add 8 hours to get UTC)
-                    date.setTime(date.getTime() + (Math.abs(utcOffset) * 60 * 60 * 1000));
+                    // PST is UTC-8, PDT is UTC-7 - create date in local timezone first
+                    const utcOffset = timezone === 'PST' ? 8 : 7;
+                    date = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+                    // Convert local time to UTC by adding the offset
+                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000));
                 } else {
-                    // Default to local time if timezone not recognized
-                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
+                    // Default to EST if timezone not recognized
+                    date = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+                    date.setTime(date.getTime() + (5 * 60 * 60 * 1000)); // Assume EST
+                    console.log(`Warning: Unrecognized timezone ${timezone}, assuming EST`);
                 }
 
                 // Create Unix timestamp and Discord timestamp - will show in each user's local timezone
@@ -1400,7 +1419,7 @@ module.exports = {
                 .setCustomId('edit_positions')
                 .setLabel('Positions')
                 .setStyle(TextInputStyle.Paragraph)
-                .setValue(operation.availableJobs.join(', '))
+                .setValue(operation.availableJobs.map(job => typeof job === 'object' ? job.name : job).join(', '))
                 .setRequired(true)
                 .setMaxLength(500);
 
@@ -1725,6 +1744,95 @@ module.exports = {
         });
 
         console.log(`🗑️ Assignment removed by ${interaction.user.tag}: ${username} from ${removedJob}`);
+    },
+
+    async handleOperationAnnounce(interaction) {
+        const operationId = interaction.options.getString('operation_id');
+        const message = interaction.options.getString('message');
+        
+        const operation = operationSchedules.get(operationId) || activeOperations.get(operationId);
+        
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Operation Not Found**: No operation found with that ID.',
+                flags: 64
+            });
+            return;
+        }
+        
+        if (!operation.operationRoleId) {
+            await interaction.reply({
+                content: '❌ **Error**: Operation role not found.',
+                flags: 64
+            });
+            return;
+        }
+        
+        try {
+            const guild = interaction.guild;
+            const operationRole = guild.roles.cache.get(operation.operationRoleId);
+            
+            if (!operationRole) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation role no longer exists.',
+                    flags: 64
+                });
+                return;
+            }
+            
+            const members = operationRole.members;
+            
+            if (members.size === 0) {
+                await interaction.reply({
+                    content: '❌ **No Participants**: No members found in this operation.',
+                    flags: 64
+                });
+                return;
+            }
+            
+            const announcementEmbed = new EmbedBuilder()
+                .setTitle(`📢 OPERATION ANNOUNCEMENT`)
+                .setDescription(`**Operation**: ${operation.name}\n**From**: ${interaction.user.tag}\n\n**Message**:\n${message}`)
+                .setColor(0xFF6B35)
+                .setTimestamp()
+                .setFooter({ text: `Operation ID: ${operationId}` });
+            
+            let successCount = 0;
+            let failureCount = 0;
+            
+            // Send DM to each operation member
+            for (const member of members.values()) {
+                try {
+                    await member.send({ embeds: [announcementEmbed] });
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to send announcement to ${member.user.tag}:`, error);
+                    failureCount++;
+                }
+            }
+            
+            // Also post in operation chat channel if it exists
+            if (operation.chatChannelId) {
+                const chatChannel = guild.channels.cache.get(operation.chatChannelId);
+                if (chatChannel) {
+                    await chatChannel.send({ embeds: [announcementEmbed] });
+                }
+            }
+            
+            await interaction.reply({
+                content: `✅ **Announcement Sent!**\n\n**Operation**: ${operation.name}\n**Recipients**: ${successCount} members\n${failureCount > 0 ? `**Failed**: ${failureCount} members` : ''}\n**Message**: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`,
+                flags: 64
+            });
+            
+            console.log(`📢 Operation announcement sent by ${interaction.user.tag} to ${successCount} members for operation ${operation.name}`);
+            
+        } catch (error) {
+            console.error('Error sending operation announcement:', error);
+            await interaction.reply({
+                content: '❌ **Error**: Failed to send announcement.',
+                flags: 64
+            });
+        }
     },
 
     // Export functions for persistence

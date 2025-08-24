@@ -8,7 +8,7 @@ module.exports = {
 
     async execute(interaction) {
         // Defer reply immediately to prevent timeout
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         if (!checkAdminPermissions(interaction.member)) {
             await interaction.editReply({
