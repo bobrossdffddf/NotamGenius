@@ -393,18 +393,18 @@ module.exports = {
                 const [, month, day, hour, minute, timezone] = timeMatch;
                 const year = new Date().getFullYear();
                 
-                // Handle timezone conversion properly
+                // Handle timezone conversion properly - convert TO UTC
                 let date;
                 if (timezone === 'EST' || timezone === 'EDT') {
-                    // EST is UTC-5, EDT is UTC-4
+                    // EST is UTC-5, EDT is UTC-4 - ADD offset to convert TO UTC
                     const utcOffset = timezone === 'EST' ? 5 : 4;
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    date.setUTCHours(date.getUTCHours() + utcOffset); // Convert EST/EDT to UTC
+                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000)); // Add hours to convert to UTC
                 } else if (timezone === 'PST' || timezone === 'PDT') {
-                    // PST is UTC-8, PDT is UTC-7
+                    // PST is UTC-8, PDT is UTC-7 - ADD offset to convert TO UTC
                     const utcOffset = timezone === 'PST' ? 8 : 7;
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    date.setUTCHours(date.getUTCHours() + utcOffset); // Convert PST/PDT to UTC
+                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000)); // Add hours to convert to UTC
                 } else {
                     // Default to local time
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
