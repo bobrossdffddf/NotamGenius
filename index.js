@@ -153,7 +153,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 }
             }
             // Handle operation modals
-            else if (interaction.customId === 'operation_start_form' || interaction.customId === 'operation_schedule_form') {
+            else if (interaction.customId === 'operation_start_form' || interaction.customId.startsWith('operation_schedule_form_')) {
                 const command = interaction.client.commands.get('operation');
                 if (command && command.handleModal) {
                     await command.handleModal(interaction);
