@@ -43,15 +43,6 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // Check admin permissions first
-        if (!checkAdminPermissions(interaction.member)) {
-            await interaction.reply({
-                content: '❌ **Access Denied**\nOnly administrators can process certification applications.',
-                flags: 64
-            });
-            return;
-        }
-
         await this.handleCertificationRequest(interaction);
     },
 
