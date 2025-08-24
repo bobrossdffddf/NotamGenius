@@ -142,6 +142,23 @@ client.on(Events.InteractionCreate, async interaction => {
                 }
             }
         }
+        // Handle operation edit button interactions
+        else if (interaction.customId.startsWith('edit_') || interaction.customId.startsWith('manage_assignments_')) {
+            const command = interaction.client.commands.get('operation');
+            if (command && command.handleEditButton) {
+                try {
+                    await command.handleEditButton(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling operation edit button:', error);
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({ 
+                            content: '❌ There was an error processing your edit request!', 
+                            flags: 64 
+                        });
+                    }
+                }
+            }
+        }
         // Handle operation confirmation buttons (Send to All, Cancel)
         else if (interaction.customId.startsWith('confirm_send_') || interaction.customId.startsWith('cancel_send_')) {
             const command = interaction.client.commands.get('operation');

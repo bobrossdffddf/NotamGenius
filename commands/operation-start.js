@@ -43,6 +43,16 @@ module.exports = {
                         .setDescription('Operation time in EST (e.g., 12:20 or 18:30)')
                         .setRequired(true)
                 )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('edit')
+                .setDescription('Edit an active operation')
+                .addStringOption(option =>
+                    option.setName('operation_id')
+                        .setDescription('Operation ID to edit')
+                        .setRequired(true)
+                )
         ),
 
     async execute(interaction) {
@@ -58,7 +68,64 @@ module.exports = {
             await this.handleOperationStart(interaction);
         } else if (interaction.options.getSubcommand() === 'schedule') {
             await this.handleOperationSchedule(interaction);
+        } else if (interaction.options.getSubcommand() === 'edit') {
+            await this.handleOperationEdit(interaction);
         }
+    },
+
+    async handleOperationEdit(interaction) {
+        const operationId = interaction.options.getString('operation_id');
+        const operation = operationSchedules.get(operationId);
+
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Operation Not Found**: No operation found with that ID. Make sure the operation is still active.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Show current operation details and editing options
+        const currentAssignments = Array.from(operation.jobAssignments.entries())
+            .map(([userId, job]) => `• <@${userId}> - ${job}`)
+            .join('\n') || '• None assigned yet';
+
+        const editEmbed = new EmbedBuilder()
+            .setTitle(`📝 **Edit Operation: ${operation.name}**`)
+            .setColor(0x0099FF)
+            .addFields(
+                { name: '📅 Time', value: operation.time, inline: true },
+                { name: '👨‍✈️ Leader', value: operation.leader, inline: true },
+                { name: '🆔 Operation ID', value: operationId, inline: true },
+                { name: '📍 Available Positions', value: operation.availableJobs.map(job => 
+                    `${job.name}${job.maxCount ? ` (${job.maxCount} slots)` : ' (unlimited)'}`
+                ).join('\n') || 'None specified' },
+                { name: '🎯 Current Assignments', value: currentAssignments },
+                { name: '📋 Details', value: operation.details.substring(0, 1000) + (operation.details.length > 1000 ? '...' : '') }
+            )
+            .setFooter({ text: 'Use the buttons below to edit specific aspects of the operation' });
+
+        const editButtons = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`edit_details_${operationId}`)
+                    .setLabel('📋 Edit Details')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`edit_positions_${operationId}`)
+                    .setLabel('📍 Edit Positions')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId(`manage_assignments_${operationId}`)
+                    .setLabel('🎯 Manage Assignments')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+        await interaction.reply({
+            embeds: [editEmbed],
+            components: [editButtons],
+            flags: 64
+        });
     },
 
     async handleOperationStart(interaction) {
@@ -173,9 +240,9 @@ module.exports = {
         // Available Jobs/Positions
         const availableJobsInput = new TextInputBuilder()
             .setCustomId('schedule_available_jobs')
-            .setLabel('Available Jobs/Positions')
+            .setLabel('Positions')
             .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('e.g., "F-22 Escort, F-16 CAP, AWACS Support, Ground Control"\nOne job per line or comma separated.')
+            .setPlaceholder('Format: "Position:MaxCount" (e.g., "F-22 Escort:2, F-16 CAP:3, AWACS Support:1")\nOr just "Position" for unlimited slots.')
             .setRequired(true)
             .setMaxLength(500);
 
@@ -252,8 +319,15 @@ module.exports = {
             // Clean up temp data
             operationSchedules.delete(tempKey);
 
-            // Parse available jobs (support both comma-separated and line-separated)
-            const jobsList = availableJobs.split(/[,\n]/).map(job => job.trim()).filter(job => job.length > 0);
+            // Parse available jobs with capacity limits (Position:Count format)
+            const jobsList = availableJobs.split(/[,\n]/).map(job => job.trim()).filter(job => job.length > 0).map(job => {
+                if (job.includes(':')) {
+                    const [name, count] = job.split(':');
+                    return { name: name.trim(), maxCount: parseInt(count.trim()) || 1 };
+                } else {
+                    return { name: job, maxCount: null }; // null = unlimited
+                }
+            });
 
             // Store operation data
             const operationId = `op_${Date.now()}`;
@@ -440,10 +514,13 @@ module.exports = {
                 discordTimestamp = `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>)`;
             }
 
-            // Format available positions for display
-            const positionsText = jobsList.map((job, index) => `${index + 1}. ${job}`).join('\n');
+            // Format available positions for display with capacity
+            const positionsText = jobsList.map((job, index) => {
+                const capacity = job.maxCount ? ` (${job.maxCount} slots)` : ' (unlimited)';
+                return `${index + 1}. ${job.name}${capacity}`;
+            }).join('\n');
 
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ STARTS:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **🎯 AVAILABLE POSITIONS:**\n${positionsText}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            const dmNotamContent = `## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**🕐 STARTS:** ${discordTimestamp}\n**👨‍✈️ OPERATION COMMANDER:** ${operationLeader}\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📍 POSITIONS:**\n${positionsText}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** ${operationId}\n**📤 ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -514,7 +591,7 @@ module.exports = {
                         { name: '📅 Scheduled Time', value: operationTime, inline: true },
                         { name: '🔒 Classification', value: 'RESTRICTED', inline: true },
                         { name: '🎯 Mission Brief', value: operationDetails },
-                        { name: '🚀 Available Positions', value: positionsText || 'None specified' },
+                        { name: '📍 Positions', value: positionsText || 'None specified' },
                         { name: '📝 Additional Directives', value: additionalNotes },
                         { name: '🏷️ Operation Role', value: `<@&${scheduleOperationRole.id}>`, inline: true },
                         { name: '👥 Currently Attending', value: '0', inline: true }
@@ -831,13 +908,21 @@ module.exports = {
         if (response === 'yes') {
             // Show job selection dropdown instead of immediately giving role
             
-            // Create job selection dropdown
-            const jobOptions = operation.availableJobs.map((job, index) => 
-                new StringSelectMenuOptionBuilder()
-                    .setLabel(job)
+            // Create job selection dropdown with capacity checking
+            const jobOptions = operation.availableJobs.map((job, index) => {
+                const currentCount = Array.from(operation.jobAssignments.values()).filter(assignedJob => assignedJob === job.name).length;
+                const availability = job.maxCount ? `(${currentCount}/${job.maxCount})` : `(${currentCount})`;
+                const isAvailable = !job.maxCount || currentCount < job.maxCount;
+                
+                return new StringSelectMenuOptionBuilder()
+                    .setLabel(`${job.name} ${availability}`)
                     .setValue(`job_${index}_${operationId}`)
-                    .setDescription(`Select ${job} position`)
-            );
+                    .setDescription(isAvailable ? `Select ${job.name} position` : 'Position full');
+            }).filter((option, index) => {
+                const job = operation.availableJobs[index];
+                const currentCount = Array.from(operation.jobAssignments.values()).filter(assignedJob => assignedJob === job.name).length;
+                return !job.maxCount || currentCount < job.maxCount;
+            });
 
             const jobSelectMenu = new StringSelectMenuBuilder()
                 .setCustomId(`job_select_${operationId}`)
@@ -981,11 +1066,22 @@ module.exports = {
         // Parse the selected job from the dropdown value
         const selectedValue = interaction.values[0]; // job_index_operationId
         const jobIndex = parseInt(selectedValue.split('_')[1]);
-        const selectedJob = operation.availableJobs[jobIndex];
+        const selectedJobObj = operation.availableJobs[jobIndex];
+        const selectedJob = selectedJobObj ? selectedJobObj.name : null;
 
         if (!selectedJob) {
             await interaction.reply({
                 content: '❌ **Invalid Selection**: The selected position is no longer available.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Check capacity limits
+        const currentCount = Array.from(operation.jobAssignments.values()).filter(assignedJob => assignedJob === selectedJob).length;
+        if (selectedJobObj.maxCount && currentCount >= selectedJobObj.maxCount) {
+            await interaction.reply({
+                content: `❌ **Position Full**: The ${selectedJob} position has reached its maximum capacity (${selectedJobObj.maxCount}).`,
                 flags: 64
             });
             return;
@@ -1050,20 +1146,27 @@ module.exports = {
                             .setTimestamp(new Date())
                             .setFooter(originalEmbed.footer);
 
-                        // Update fields and add job assignments
+                        // Update fields with job assignments inline
                         const fields = originalEmbed.fields.map(field => {
                             if (field.name === '👥 Currently Attending') {
                                 return { name: field.name, value: operation.attendingCount.toString(), inline: field.inline };
                             }
+                            if (field.name === '📍 Positions') {
+                                // Build positions with assignments inline
+                                const positionsWithAssignments = operation.availableJobs.map(job => {
+                                    const assignedUsers = Array.from(operation.jobAssignments.entries())
+                                        .filter(([userId, assignedJob]) => assignedJob === job.name)
+                                        .map(([userId]) => `<@${userId}>`)
+                                        .join(' ');
+                                    
+                                    const capacity = job.maxCount ? ` (${job.maxCount} slots)` : '';
+                                    return assignedUsers ? `${job.name}${capacity} - ${assignedUsers}` : `${job.name}${capacity}`;
+                                }).join('\n');
+                                
+                                return { name: field.name, value: positionsWithAssignments || 'None specified', inline: field.inline };
+                            }
                             return field;
                         });
-
-                        // Add job assignments field
-                        const jobAssignmentsText = Array.from(operation.jobAssignments.entries())
-                            .map(([userId, job]) => `<@${userId}> - ${job}`)
-                            .join('\n') || 'None assigned yet';
-
-                        fields.push({ name: '🎯 Position Assignments', value: jobAssignmentsText, inline: false });
 
                         updatedEmbed.addFields(fields);
                         await briefingMessage.edit({ embeds: [updatedEmbed] });
@@ -1089,17 +1192,22 @@ module.exports = {
                         `**👥 CURRENTLY ATTENDING:** ${operation.attendingCount}`
                     );
 
-                    // Add job assignments section before the response required section
-                    const jobAssignmentsText = Array.from(operation.jobAssignments.entries())
-                        .map(([userId, job]) => `• <@${userId}> - ${job}`)
-                        .join('\n') || '• None assigned yet';
-
-                    const assignmentsSection = `\n### **🎯 CONFIRMED ASSIGNMENTS:**\n${jobAssignmentsText}\n`;
+                    // Update positions section with assignments inline
+                    const positionsWithAssignments = operation.availableJobs.map(job => {
+                        const assignedUsers = Array.from(operation.jobAssignments.entries())
+                            .filter(([userId, assignedJob]) => assignedJob === job.name)
+                            .map(([userId]) => `<@${userId}>`)
+                            .join(' ');
+                        
+                        const capacity = job.maxCount ? ` (${job.maxCount} slots)` : ' (unlimited)';
+                        const index = operation.availableJobs.indexOf(job) + 1;
+                        return assignedUsers ? `${index}. ${job.name}${capacity} - ${assignedUsers}` : `${index}. ${job.name}${capacity}`;
+                    }).join('\n');
                     
-                    // Insert before the personnel response section
+                    // Replace the positions section
                     updatedContent = updatedContent.replace(
-                        '_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**',
-                        `${assignmentsSection}_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**`
+                        /### \*\*📍 POSITIONS:\*\*\n[\s\S]*?\n\n### \*\*📝 ADDITIONAL NOTES:/,
+                        `### **📍 POSITIONS:**\n${positionsWithAssignments}\n\n### **📝 ADDITIONAL NOTES:`
                     );
 
                     const updatedEmbed = new EmbedBuilder()
@@ -1119,6 +1227,13 @@ module.exports = {
         });
 
         console.log(`🎯 Job Assignment: ${interaction.user.tag} selected "${selectedJob}" for operation "${operation.name}"`);
+    },
+
+    async handleEditButton(interaction) {
+        await interaction.reply({
+            content: '🚧 **Edit functionality is under development**\n\nThis feature will allow you to:\n• Edit operation details\n• Modify available positions\n• Reassign personnel to different roles\n\nFor now, you can manually reassign users by having them respond to the operation again.',
+            flags: 64
+        });
     },
 
     async handleConfirmationButton(interaction) {
