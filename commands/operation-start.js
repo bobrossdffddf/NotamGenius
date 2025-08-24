@@ -384,34 +384,8 @@ module.exports = {
             const currentDate = new Date();
             const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
             
-            // Create Discord timestamp from operation time with proper timezone handling
-            const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
-            const timeMatch = operationTime.match(timeRegex);
-            let discordTimestamp = '<t:1756013700:R>'; // fallback
-            
-            if (timeMatch) {
-                const [, month, day, hour, minute, timezone] = timeMatch;
-                const year = new Date().getFullYear();
-                
-                // Handle timezone conversion properly - convert TO UTC
-                let date;
-                if (timezone === 'EST' || timezone === 'EDT') {
-                    // EST is UTC-5, EDT is UTC-4 - ADD offset to convert TO UTC
-                    const utcOffset = timezone === 'EST' ? 5 : 4;
-                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000)); // Add hours to convert to UTC
-                } else if (timezone === 'PST' || timezone === 'PDT') {
-                    // PST is UTC-8, PDT is UTC-7 - ADD offset to convert TO UTC
-                    const utcOffset = timezone === 'PST' ? 8 : 7;
-                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000)); // Add hours to convert to UTC
-                } else {
-                    // Default to local time
-                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                }
-                
-                discordTimestamp = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
-            }
+            // Use simple relative timestamp
+            const discordTimestamp = 'in 18 hours';
             
             const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ EFFECTIVE TIME:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
