@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
+const { checkAdminPermissions } = require('../utils/permissions');
 
 // Configuration for certification types and channels
 const config = {
@@ -42,6 +43,15 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // Check admin permissions first
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can process certification applications.',
+                flags: 64
+            });
+            return;
+        }
+
         await this.handleCertificationRequest(interaction);
     },
 
