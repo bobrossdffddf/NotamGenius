@@ -196,7 +196,7 @@ module.exports = {
 
     async handleOperationEdit(interaction) {
         const operationId = interaction.options.getString('operation_id');
-        const operation = operationSchedules.get(operationId);
+        const operation = operationSchedules.get(operationId) || activeOperations.get(operationId);
 
         if (!operation) {
             await interaction.reply({
@@ -1233,8 +1233,10 @@ module.exports = {
         // Store job assignment
         operation.jobAssignments.set(interaction.user.id, selectedJob);
         
-        // Save to disk
+        // Save to disk immediately
         await saveOperations();
+        
+        console.log(`💾 Job assignment saved: ${interaction.user.tag} -> ${selectedJob} for operation ${operation.name}`);
 
         // Update attending count if this is a new "yes" response
         if (!previousResponse || previousResponse.response !== 'yes') {
@@ -1457,8 +1459,10 @@ module.exports = {
                 operation.jobAssignments = new Map();
             }
             
+            console.log(`🔍 Debug - Operation ${operation.name} has ${operation.jobAssignments.size} assignments:`, Array.from(operation.jobAssignments.entries()));
+            
             let assignmentsList = '';
-            if (operation.jobAssignments.size > 0) {
+            if (operation.jobAssignments && operation.jobAssignments.size > 0) {
                 for (const [userId, job] of operation.jobAssignments) {
                     const user = await interaction.client.users.fetch(userId).catch(() => null);
                     const username = user ? user.username : 'Unknown User';
