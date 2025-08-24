@@ -1,8 +1,14 @@
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { checkAdminPermissions } = require('../utils/permissions');
 
 // Store active operations (in production, use a database)
 const activeOperations = new Map();
+
+// Store operation scheduling data temporarily
+const operationSchedules = new Map();
+
+// Target role ID for operation notifications
+const TARGET_ROLE_ID = '1409027687736938537';
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,6 +18,11 @@ module.exports = {
             subcommand
                 .setName('start')
                 .setDescription('Start a new operation')
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('schedule')
+                .setDescription('Schedule an operation and notify role members')
         ),
 
     async execute(interaction) {
@@ -25,6 +36,8 @@ module.exports = {
 
         if (interaction.options.getSubcommand() === 'start') {
             await this.handleOperationStart(interaction);
+        } else if (interaction.options.getSubcommand() === 'schedule') {
+            await this.handleOperationSchedule(interaction);
         }
     },
 
@@ -84,9 +97,202 @@ module.exports = {
         await interaction.showModal(modal);
     },
 
-    async handleModal(interaction) {
-        if (interaction.customId !== 'operation_start_form') return;
+    async handleOperationSchedule(interaction) {
+        // Create modal to collect operation details
+        const modal = new ModalBuilder()
+            .setCustomId('operation_schedule_form')
+            .setTitle('Schedule Operation - Enter Details');
 
+        // Operation Name
+        const operationNameInput = new TextInputBuilder()
+            .setCustomId('schedule_operation_name')
+            .setLabel('Operation Name')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., "Anchorage Resolution"')
+            .setRequired(true)
+            .setMaxLength(100);
+
+        // Operation Date & Time
+        const operationTimeInput = new TextInputBuilder()
+            .setCustomId('schedule_operation_time')
+            .setLabel('Operation Date & Time')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., "December 15, 2024 - 1400Z"')
+            .setRequired(true)
+            .setMaxLength(200);
+
+        // Operation Details
+        const operationDetailsInput = new TextInputBuilder()
+            .setCustomId('schedule_operation_details')
+            .setLabel('Operation Details & Briefing')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Brief description of the operation, objectives, and important information...')
+            .setRequired(true)
+            .setMaxLength(1500);
+
+        // Operation Leader/Contact
+        const operationLeaderInput = new TextInputBuilder()
+            .setCustomId('schedule_operation_leader')
+            .setLabel('Operation Leader/Contact')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('e.g., @alexbillyjoil')
+            .setRequired(true)
+            .setMaxLength(100);
+
+        // Additional Notes
+        const additionalNotesInput = new TextInputBuilder()
+            .setCustomId('schedule_additional_notes')
+            .setLabel('Additional Notes (Optional)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Any additional information, requirements, or special instructions...')
+            .setRequired(false)
+            .setMaxLength(1000);
+
+        const row1 = new ActionRowBuilder().addComponents(operationNameInput);
+        const row2 = new ActionRowBuilder().addComponents(operationTimeInput);
+        const row3 = new ActionRowBuilder().addComponents(operationDetailsInput);
+        const row4 = new ActionRowBuilder().addComponents(operationLeaderInput);
+        const row5 = new ActionRowBuilder().addComponents(additionalNotesInput);
+
+        modal.addComponents(row1, row2, row3, row4, row5);
+
+        await interaction.showModal(modal);
+    },
+
+    async handleModal(interaction) {
+        if (interaction.customId === 'operation_start_form') {
+            await this.handleOperationStartModal(interaction);
+        } else if (interaction.customId === 'operation_schedule_form') {
+            await this.handleOperationScheduleModal(interaction);
+        }
+    },
+
+    async handleOperationScheduleModal(interaction) {
+        try {
+            // Get form data
+            const operationName = interaction.fields.getTextInputValue('schedule_operation_name');
+            const operationTime = interaction.fields.getTextInputValue('schedule_operation_time');
+            const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
+            const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
+            const additionalNotes = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
+
+            // Store operation data
+            const operationId = `op_${Date.now()}`;
+            operationSchedules.set(operationId, {
+                name: operationName,
+                time: operationTime,
+                details: operationDetails,
+                leader: operationLeader,
+                notes: additionalNotes,
+                responses: new Map(),
+                scheduledBy: interaction.user.id,
+                guildId: interaction.guild.id
+            });
+
+            // Find target role
+            const targetRole = interaction.guild.roles.cache.get(TARGET_ROLE_ID);
+            if (!targetRole) {
+                await interaction.reply({
+                    content: '❌ **Error**: Target role not found. Please check the role configuration.',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            // Get all members with the target role
+            const membersWithRole = targetRole.members;
+            
+            if (membersWithRole.size === 0) {
+                await interaction.reply({
+                    content: '❌ **No Members**: No members found with the target role.',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            // Create the operation notification embed
+            const operationEmbed = new EmbedBuilder()
+                .setTitle('🚁 **OPERATION SCHEDULED**')
+                .setDescription(`**${operationName}**`)
+                .addFields(
+                    { name: '📅 **Date & Time**', value: operationTime, inline: true },
+                    { name: '👤 **Operation Leader**', value: operationLeader, inline: true },
+                    { name: '\u200B', value: '\u200B', inline: true },
+                    { name: '📋 **Operation Details**', value: operationDetails, inline: false },
+                    { name: '📝 **Additional Notes**', value: additionalNotes, inline: false },
+                    { name: '❓ **Response Required**', value: 'Please indicate your availability by clicking one of the buttons below.', inline: false }
+                )
+                .setColor(0xFF6B35)
+                .setFooter({ text: `Operation ID: ${operationId} | Scheduled by ${interaction.user.tag}` })
+                .setTimestamp();
+
+            // Create response buttons
+            const responseRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`op_response_yes_${operationId}`)
+                        .setLabel('✅ Yes, I\'ll Join')
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setCustomId(`op_response_tbd_${operationId}`)
+                        .setLabel('❔ To Be Determined')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId(`op_response_no_${operationId}`)
+                        .setLabel('❌ No Thank You')
+                        .setStyle(ButtonStyle.Danger)
+                );
+
+            // Send DMs to all members with the role
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const [memberId, member] of membersWithRole) {
+                try {
+                    await member.send({
+                        content: `**📢 Operation Notification from ${interaction.guild.name}**`,
+                        embeds: [operationEmbed],
+                        components: [responseRow]
+                    });
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to send DM to ${member.user.tag}:`, error);
+                    failCount++;
+                }
+            }
+
+            // Send confirmation to admin
+            const confirmEmbed = new EmbedBuilder()
+                .setTitle('✅ **Operation Scheduled Successfully**')
+                .setDescription(`**${operationName}** notifications have been sent.`)
+                .addFields(
+                    { name: '📊 **Delivery Stats**', value: `✅ Sent: ${successCount}\n❌ Failed: ${failCount}\n👥 Total: ${membersWithRole.size}`, inline: true },
+                    { name: '🎯 **Target Role**', value: targetRole.name, inline: true },
+                    { name: '🆔 **Operation ID**', value: operationId, inline: true }
+                )
+                .setColor(0x00FF00)
+                .setTimestamp();
+
+            await interaction.reply({
+                embeds: [confirmEmbed],
+                ephemeral: true
+            });
+
+            // Auto-cleanup operation data after 24 hours
+            setTimeout(() => {
+                operationSchedules.delete(operationId);
+            }, 24 * 60 * 60 * 1000);
+
+        } catch (error) {
+            console.error('Error processing operation schedule modal:', error);
+            await interaction.reply({
+                content: '❌ **Error**: There was an error processing your operation schedule. Please try again.',
+                ephemeral: true
+            });
+        }
+    },
+
+    async handleOperationStartModal(interaction) {
         // Defer reply immediately to prevent timeout
         await interaction.deferReply({ ephemeral: true });
 
@@ -297,5 +503,41 @@ module.exports = {
             }
         }
         return null;
+    },
+
+    async handleButton(interaction) {
+        if (!interaction.customId.startsWith('op_response_')) return;
+
+        const [, , response, operationId] = interaction.customId.split('_');
+        const operation = operationSchedules.get(operationId);
+
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Operation Expired**: This operation is no longer accepting responses.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        // Store/update user response
+        operation.responses.set(interaction.user.id, {
+            response: response,
+            username: interaction.user.tag,
+            timestamp: new Date()
+        });
+
+        // Response messages
+        const responseMessages = {
+            'yes': '✅ **Confirmed!** You have confirmed your participation in the operation.',
+            'tbd': '❔ **Noted!** You have marked your availability as "To Be Determined".',
+            'no': '❌ **Understood!** You have declined participation in this operation.'
+        };
+
+        await interaction.reply({
+            content: responseMessages[response] + `\n\n**Operation**: ${operation.name}\n**Time**: ${operation.time}`,
+            ephemeral: true
+        });
+
+        console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}"`);
     }
 };

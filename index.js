@@ -110,16 +110,34 @@ client.on(Events.InteractionCreate, async interaction => {
     
     // Handle button interactions for form continuation
     else if (interaction.isButton()) {
-        const command = interaction.client.commands.get('notam');
-        if (command && command.handleButton) {
-            try {
-                await command.handleButton(interaction);
-            } catch (error) {
-                console.error('❌ Error handling button interaction:', error);
-                await interaction.reply({ 
-                    content: '❌ There was an error processing your request!', 
-                    ephemeral: true 
-                });
+        // Handle NOTAM button interactions
+        if (interaction.customId.startsWith('notam_')) {
+            const command = interaction.client.commands.get('notam');
+            if (command && command.handleButton) {
+                try {
+                    await command.handleButton(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling NOTAM button interaction:', error);
+                    await interaction.reply({ 
+                        content: '❌ There was an error processing your request!', 
+                        ephemeral: true 
+                    });
+                }
+            }
+        }
+        // Handle operation response button interactions
+        else if (interaction.customId.startsWith('op_response_')) {
+            const command = interaction.client.commands.get('operation');
+            if (command && command.handleButton) {
+                try {
+                    await command.handleButton(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling operation button interaction:', error);
+                    await interaction.reply({ 
+                        content: '❌ There was an error processing your operation response!', 
+                        ephemeral: true 
+                    });
+                }
             }
         }
     }
@@ -134,8 +152,8 @@ client.on(Events.InteractionCreate, async interaction => {
                     await command.handleModal(interaction);
                 }
             }
-            // Handle operation start modals
-            else if (interaction.customId === 'operation_start_form') {
+            // Handle operation modals
+            else if (interaction.customId === 'operation_start_form' || interaction.customId === 'operation_schedule_form') {
                 const command = interaction.client.commands.get('operation');
                 if (command && command.handleModal) {
                     await command.handleModal(interaction);
