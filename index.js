@@ -38,6 +38,13 @@ client.once(Events.ClientReady, async readyClient => {
     console.log(`🤖 Discord bot is ready! Logged in as ${readyClient.user.tag}`);
     console.log(`📡 Serving ${client.guilds.cache.size} servers`);
     
+    // Make client globally accessible for roster updater
+    global.client = readyClient;
+    
+    // Start roster auto-updater
+    const RosterUpdater = require('./utils/roster-updater');
+    new RosterUpdater(readyClient);
+    
     // Register slash commands globally
     try {
         console.log('🗑️ Clearing existing commands...');
@@ -119,17 +126,27 @@ client.on(Events.InteractionCreate, async interaction => {
     
     // Handle modal submissions for form data
     else if (interaction.isModalSubmit()) {
-        const command = interaction.client.commands.get('notam');
-        if (command && command.handleModal) {
-            try {
-                await command.handleModal(interaction);
-            } catch (error) {
-                console.error('❌ Error handling modal submission:', error);
-                await interaction.reply({ 
-                    content: '❌ There was an error processing your form submission!', 
-                    ephemeral: true 
-                });
+        try {
+            // Handle NOTAM modals
+            if (interaction.customId === 'notam_single_form') {
+                const command = interaction.client.commands.get('notam');
+                if (command && command.handleModal) {
+                    await command.handleModal(interaction);
+                }
             }
+            // Handle operation start modals
+            else if (interaction.customId === 'operation_start_form') {
+                const command = interaction.client.commands.get('operation');
+                if (command && command.handleModal) {
+                    await command.handleModal(interaction);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error handling modal submission:', error);
+            await interaction.reply({ 
+                content: '❌ There was an error processing your form submission!', 
+                flags: 64 
+            });
         }
     }
 });
