@@ -10,7 +10,7 @@ const config = {
             roleId: '1408995322021154846'
         },
         'af1': {
-            name: 'AF1 Cert',
+            name: 'USAF | Air Force One Certified',
             roleId: '1408942834060361740'
         },
         'marine-one': {
@@ -35,7 +35,7 @@ module.exports = {
                 .setRequired(true)
                 .addChoices(
                     { name: 'ATC Certified', value: 'atc' },
-                    { name: 'AF1 Cert', value: 'af1' },
+                    { name: 'USAF | Air Force One Certified', value: 'af1' },
                     { name: 'USMC | Marine One Certified', value: 'marine-one' },
                     { name: 'Ground Operations Certified', value: 'ground-ops' }
                 )

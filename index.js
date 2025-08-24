@@ -44,11 +44,19 @@ client.once(Events.ClientReady, async readyClient => {
         
         const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
         
-        // Clear existing commands
+        // Clear all existing commands (global and guild-specific)
         await rest.put(
             Routes.applicationCommands(readyClient.user.id),
             { body: [] }
         );
+        
+        // Also clear guild-specific commands for each guild
+        for (const guild of readyClient.guilds.cache.values()) {
+            await rest.put(
+                Routes.applicationGuildCommands(readyClient.user.id, guild.id),
+                { body: [] }
+            );
+        }
         
         console.log('🔄 Registering new slash commands...');
         
