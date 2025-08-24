@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { checkAdminPermissions } = require('../utils/permissions');
+const fs = require('fs').promises;
+const path = require('path');
 
 // Store active operations (in production, use a database)
 const activeOperations = new Map();
@@ -19,6 +21,100 @@ const CERTIFICATION_ROLES = {
     'F-16': '1409300512062574663',
     'F-35': '1409300434967072888'
 };
+
+// Data persistence paths
+const ACTIVE_OPERATIONS_FILE = path.join(__dirname, '..', 'data', 'active-operations.json');
+const SCHEDULED_OPERATIONS_FILE = path.join(__dirname, '..', 'data', 'scheduled-operations.json');
+
+// Persistence functions
+async function saveOperations() {
+    try {
+        const activeOpsData = {};
+        const scheduledOpsData = {};
+        
+        // Convert Maps to objects for JSON storage
+        for (const [id, op] of activeOperations) {
+            const serializedOp = { ...op };
+            // Convert Maps to objects
+            if (op.responses) {
+                serializedOp.responses = Object.fromEntries(op.responses);
+            }
+            if (op.jobAssignments) {
+                serializedOp.jobAssignments = Object.fromEntries(op.jobAssignments);
+            }
+            activeOpsData[id] = serializedOp;
+        }
+        
+        for (const [id, op] of operationSchedules) {
+            const serializedOp = { ...op };
+            if (op.responses) {
+                serializedOp.responses = Object.fromEntries(op.responses);
+            }
+            if (op.jobAssignments) {
+                serializedOp.jobAssignments = Object.fromEntries(op.jobAssignments);
+            }
+            scheduledOpsData[id] = serializedOp;
+        }
+        
+        await fs.writeFile(ACTIVE_OPERATIONS_FILE, JSON.stringify(activeOpsData, null, 2));
+        await fs.writeFile(SCHEDULED_OPERATIONS_FILE, JSON.stringify(scheduledOpsData, null, 2));
+        
+        console.log('💾 Operations data saved to disk');
+    } catch (error) {
+        console.error('❌ Error saving operations:', error);
+    }
+}
+
+async function loadOperations() {
+    try {
+        // Load active operations
+        try {
+            const activeData = await fs.readFile(ACTIVE_OPERATIONS_FILE, 'utf8');
+            const activeOpsData = JSON.parse(activeData);
+            
+            for (const [id, op] of Object.entries(activeOpsData)) {
+                // Restore Maps from objects
+                if (op.responses) {
+                    op.responses = new Map(Object.entries(op.responses));
+                }
+                if (op.jobAssignments) {
+                    op.jobAssignments = new Map(Object.entries(op.jobAssignments));
+                }
+                activeOperations.set(id, op);
+            }
+            
+            console.log(`📁 Loaded ${activeOperations.size} active operations from disk`);
+        } catch (error) {
+            if (error.code !== 'ENOENT') {
+                console.error('❌ Error loading active operations:', error);
+            }
+        }
+        
+        // Load scheduled operations
+        try {
+            const scheduledData = await fs.readFile(SCHEDULED_OPERATIONS_FILE, 'utf8');
+            const scheduledOpsData = JSON.parse(scheduledData);
+            
+            for (const [id, op] of Object.entries(scheduledOpsData)) {
+                if (op.responses) {
+                    op.responses = new Map(Object.entries(op.responses));
+                }
+                if (op.jobAssignments) {
+                    op.jobAssignments = new Map(Object.entries(op.jobAssignments));
+                }
+                operationSchedules.set(id, op);
+            }
+            
+            console.log(`📁 Loaded ${operationSchedules.size} scheduled operations from disk`);
+        } catch (error) {
+            if (error.code !== 'ENOENT') {
+                console.error('❌ Error loading scheduled operations:', error);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error in loadOperations:', error);
+    }
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -351,6 +447,9 @@ module.exports = {
                 chatChannelId: null
             };
             operationSchedules.set(operationId, operationData);
+            
+            // Save to disk
+            await saveOperations();
 
             // Create operation infrastructure (role, category, channels)
             const scheduleOperationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
@@ -622,6 +721,9 @@ module.exports = {
                 scheduled: true // Mark as scheduled operation
             };
             activeOperations.set(operationId, activeOperationData);
+            
+            // Save to disk
+            await saveOperations();
 
             // Post operation details to the specified channel
             const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
@@ -801,6 +903,9 @@ module.exports = {
             };
 
             activeOperations.set(operationId, operationData);
+            
+            // Save to disk
+            await saveOperations();
 
             // Create operation briefing embed
             const briefingEmbed = new EmbedBuilder()
@@ -1100,6 +1205,9 @@ module.exports = {
 
         // Store job assignment
         operation.jobAssignments.set(interaction.user.id, selectedJob);
+        
+        // Save to disk
+        await saveOperations();
 
         // Update attending count if this is a new "yes" response
         if (!previousResponse || previousResponse.response !== 'yes') {
@@ -1230,10 +1338,129 @@ module.exports = {
     },
 
     async handleEditButton(interaction) {
-        await interaction.reply({
-            content: '🚧 **Edit functionality is under development**\n\nThis feature will allow you to:\n• Edit operation details\n• Modify available positions\n• Reassign personnel to different roles\n\nFor now, you can manually reassign users by having them respond to the operation again.',
-            flags: 64
-        });
+        // Check admin permissions
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can edit operations.',
+                flags: 64
+            });
+            return;
+        }
+
+        if (interaction.customId.startsWith('edit_')) {
+            const operationId = interaction.customId.split('_').slice(1).join('_');
+            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+
+            if (!operation) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation not found.',
+                    flags: 64
+                });
+                return;
+            }
+
+            // Create edit form modal
+            const modal = new ModalBuilder()
+                .setCustomId(`edit_form_${operationId}`)
+                .setTitle(`Edit Operation: ${operation.name}`);
+
+            const nameInput = new TextInputBuilder()
+                .setCustomId('edit_name')
+                .setLabel('Operation Name')
+                .setStyle(TextInputStyle.Short)
+                .setValue(operation.name)
+                .setRequired(true)
+                .setMaxLength(50);
+
+            const timeInput = new TextInputBuilder()
+                .setCustomId('edit_time')
+                .setLabel('Operation Time')
+                .setStyle(TextInputStyle.Short)
+                .setValue(operation.time)
+                .setRequired(true)
+                .setMaxLength(50);
+
+            const leaderInput = new TextInputBuilder()
+                .setCustomId('edit_leader')
+                .setLabel('Operation Leader')
+                .setStyle(TextInputStyle.Short)
+                .setValue(operation.leader)
+                .setRequired(true)
+                .setMaxLength(100);
+
+            const detailsInput = new TextInputBuilder()
+                .setCustomId('edit_details')
+                .setLabel('Operation Details')
+                .setStyle(TextInputStyle.Paragraph)
+                .setValue(operation.details)
+                .setRequired(true)
+                .setMaxLength(1000);
+
+            const positionsInput = new TextInputBuilder()
+                .setCustomId('edit_positions')
+                .setLabel('Positions')
+                .setStyle(TextInputStyle.Paragraph)
+                .setValue(operation.availableJobs.join(', '))
+                .setRequired(true)
+                .setMaxLength(500);
+
+            const firstRow = new ActionRowBuilder().addComponents(nameInput);
+            const secondRow = new ActionRowBuilder().addComponents(timeInput);
+            const thirdRow = new ActionRowBuilder().addComponents(leaderInput);
+            const fourthRow = new ActionRowBuilder().addComponents(detailsInput);
+            const fifthRow = new ActionRowBuilder().addComponents(positionsInput);
+
+            modal.addComponents(firstRow, secondRow, thirdRow, fourthRow, fifthRow);
+
+            await interaction.showModal(modal);
+        } else if (interaction.customId.startsWith('manage_assignments_')) {
+            const operationId = interaction.customId.split('_').slice(2).join('_');
+            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+
+            if (!operation) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation not found.',
+                    flags: 64
+                });
+                return;
+            }
+
+            let assignmentsList = '';
+            if (operation.jobAssignments.size > 0) {
+                for (const [userId, job] of operation.jobAssignments) {
+                    const user = await interaction.client.users.fetch(userId).catch(() => null);
+                    const username = user ? user.username : 'Unknown User';
+                    assignmentsList += `• **${job}**: ${username} (<@${userId}>)\n`;
+                }
+            } else {
+                assignmentsList = 'No assignments yet.';
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🎯 Manage Assignments: ${operation.name}`)
+                .setDescription(`**Current Assignments:**\n${assignmentsList}`)
+                .setColor(0x0099FF);
+
+            const removeButton = new ButtonBuilder()
+                .setCustomId(`remove_assignment_${operationId}`)
+                .setLabel('Remove Assignment')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️');
+
+            const refreshButton = new ButtonBuilder()
+                .setCustomId(`refresh_assignments_${operationId}`)
+                .setLabel('Refresh')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🔄');
+
+            const row = new ActionRowBuilder().addComponents(removeButton, refreshButton);
+
+            await interaction.reply({
+                embeds: [embed],
+                components: [row],
+                flags: 64
+            });
+        }
     },
 
     async handleConfirmationButton(interaction) {
@@ -1324,5 +1551,200 @@ module.exports = {
                 components: []
             });
         }
+    },
+
+    async handleEditModal(interaction) {
+        // Check admin permissions
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can edit operations.',
+                flags: 64
+            });
+            return;
+        }
+
+        const operationId = interaction.customId.split('_').slice(2).join('_');
+        const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Error**: Operation not found.',
+                flags: 64
+            });
+            return;
+        }
+
+        const newName = interaction.fields.getTextInputValue('edit_name');
+        const newTime = interaction.fields.getTextInputValue('edit_time');
+        const newLeader = interaction.fields.getTextInputValue('edit_leader');
+        const newDetails = interaction.fields.getTextInputValue('edit_details');
+        const newPositionsString = interaction.fields.getTextInputValue('edit_positions');
+
+        // Parse positions
+        const newPositions = newPositionsString.split(',').map(pos => pos.trim()).filter(pos => pos.length > 0);
+
+        // Update operation data
+        operation.name = newName;
+        operation.time = newTime;
+        operation.leader = newLeader;
+        operation.details = newDetails;
+        operation.availableJobs = newPositions;
+
+        // Save to disk
+        await saveOperations();
+
+        // Update the operation messages if they exist
+        try {
+            if (operation.detailsMessageId && operation.infoChannelId) {
+                const channel = interaction.guild.channels.cache.get(operation.infoChannelId);
+                if (channel) {
+                    const message = await channel.messages.fetch(operation.detailsMessageId);
+                    if (message) {
+                        // Update the embed with new information
+                        const updatedEmbed = new EmbedBuilder()
+                            .setTitle(`🚁 **${newName}**`)
+                            .setDescription(`**🔴 Operation Time:** ${newTime}\n**👨‍✈️ Operation Leader:** ${newLeader}\n\n**📡 Details:**\n${newDetails}\n\n**📍 Positions:**\n${newPositions.map(pos => `• ${pos}`).join('\n')}\n\n**📝 Additional Notes:**\n${operation.notes || 'None'}`)
+                            .setColor(0xFF4500)
+                            .setTimestamp();
+
+                        await message.edit({ embeds: [updatedEmbed] });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error updating operation message:', error);
+        }
+
+        await interaction.reply({
+            content: `✅ **Operation Updated Successfully!**\n\n**Operation**: ${newName}\n**New Time**: ${newTime}\n**New Leader**: ${newLeader}\n\nAll changes have been saved and the operation details have been updated.`,
+            flags: 64
+        });
+
+        console.log(`✏️ Operation edited by ${interaction.user.tag}: ${newName}`);
+    },
+
+    async handleAssignmentButtons(interaction) {
+        // Check admin permissions
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can manage assignments.',
+                flags: 64
+            });
+            return;
+        }
+
+        if (interaction.customId.startsWith('remove_assignment_')) {
+            const operationId = interaction.customId.split('_').slice(2).join('_');
+            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+
+            if (!operation) {
+                await interaction.reply({
+                    content: '❌ **Error**: Operation not found.',
+                    flags: 64
+                });
+                return;
+            }
+
+            if (operation.jobAssignments.size === 0) {
+                await interaction.reply({
+                    content: '❌ **No assignments to remove.**',
+                    flags: 64
+                });
+                return;
+            }
+
+            // Create dropdown with current assignments
+            const options = [];
+            for (const [userId, job] of operation.jobAssignments) {
+                const user = await interaction.client.users.fetch(userId).catch(() => null);
+                const username = user ? user.username : 'Unknown User';
+                options.push(new StringSelectMenuOptionBuilder()
+                    .setLabel(`${job} - ${username}`)
+                    .setValue(userId)
+                    .setDescription(`Remove ${username} from ${job}`)
+                );
+            }
+
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`select_remove_${operationId}`)
+                .setPlaceholder('Select assignment to remove')
+                .addOptions(options);
+
+            const row = new ActionRowBuilder().addComponents(selectMenu);
+
+            await interaction.reply({
+                content: '🗑️ **Select an assignment to remove:**',
+                components: [row],
+                flags: 64
+            });
+        } else if (interaction.customId.startsWith('refresh_assignments_')) {
+            // Refresh the assignments display
+            const operationId = interaction.customId.split('_').slice(2).join('_');
+            await this.handleEditButton({ ...interaction, customId: `manage_assignments_${operationId}` });
+        }
+    },
+
+    async handleRemoveAssignment(interaction) {
+        const operationId = interaction.customId.split('_').slice(2).join('_');
+        const userIdToRemove = interaction.values[0];
+        const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Error**: Operation not found.',
+                flags: 64
+            });
+            return;
+        }
+
+        const removedJob = operation.jobAssignments.get(userIdToRemove);
+        const user = await interaction.client.users.fetch(userIdToRemove).catch(() => null);
+        const username = user ? user.username : 'Unknown User';
+
+        // Remove from assignments and responses
+        operation.jobAssignments.delete(userIdToRemove);
+        operation.responses.delete(userIdToRemove);
+        operation.attendingCount = Math.max(0, operation.attendingCount - 1);
+
+        // Remove operation role from user
+        try {
+            const member = await interaction.guild.members.fetch(userIdToRemove);
+            if (member && operation.operationRoleId) {
+                await member.roles.remove(operation.operationRoleId);
+            }
+        } catch (error) {
+            console.error('Error removing role from user:', error);
+        }
+
+        // Save to disk
+        await saveOperations();
+
+        await interaction.reply({
+            content: `✅ **Assignment Removed**\n\n**User**: ${username}\n**Position**: ${removedJob}\n\nThe user has been removed from the operation and their role has been revoked.`,
+            flags: 64
+        });
+
+        console.log(`🗑️ Assignment removed by ${interaction.user.tag}: ${username} from ${removedJob}`);
+    },
+
+    // Export functions for persistence
+    loadOperations,
+    saveOperations,
+
+    getActiveOperations() {
+        return activeOperations;
+    },
+
+    getActiveOperation(guildId) {
+        for (const [id, op] of activeOperations) {
+            if (op.guildId === guildId && op.active) {
+                return { id, ...op };
+            }
+        }
+        return null;
+    },
+
+    getOperationSchedules() {
+        return operationSchedules;
     }
 };

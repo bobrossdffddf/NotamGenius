@@ -33,6 +33,14 @@ for (const file of commandFiles) {
     }
 }
 
+// Load operations from disk on startup
+async function loadOperationsOnStartup() {
+    const operationCommand = client.commands.get('operation');
+    if (operationCommand && operationCommand.loadOperations) {
+        await operationCommand.loadOperations();
+    }
+}
+
 // Bot ready event
 client.once(Events.ClientReady, async readyClient => {
     console.log(`🤖 Discord bot is ready! Logged in as ${readyClient.user.tag}`);
@@ -44,6 +52,9 @@ client.once(Events.ClientReady, async readyClient => {
     // Start roster auto-updater
     const RosterUpdater = require('./utils/roster-updater');
     new RosterUpdater(readyClient);
+    
+    // Load operations from disk
+    await loadOperationsOnStartup();
     
     // Register slash commands to each guild (instant registration)
     try {
@@ -142,7 +153,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 }
             }
         }
-        // Handle operation edit button interactions
+        // Handle operation edit button interactions  
         else if (interaction.customId.startsWith('edit_') || interaction.customId.startsWith('manage_assignments_')) {
             const command = interaction.client.commands.get('operation');
             if (command && command.handleEditButton) {
@@ -153,6 +164,23 @@ client.on(Events.InteractionCreate, async interaction => {
                     if (!interaction.replied && !interaction.deferred) {
                         await interaction.reply({ 
                             content: '❌ There was an error processing your edit request!', 
+                            flags: 64 
+                        });
+                    }
+                }
+            }
+        }
+        // Handle assignment management buttons
+        else if (interaction.customId.startsWith('remove_assignment_') || interaction.customId.startsWith('refresh_assignments_')) {
+            const command = interaction.client.commands.get('operation');
+            if (command && command.handleAssignmentButtons) {
+                try {
+                    await command.handleAssignmentButtons(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling assignment button:', error);
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({ 
+                            content: '❌ There was an error processing your assignment request!', 
                             flags: 64 
                         });
                     }
@@ -189,6 +217,13 @@ client.on(Events.InteractionCreate, async interaction => {
                     await command.handleJobSelection(interaction, operationId);
                 }
             }
+            // Handle assignment removal dropdowns
+            else if (interaction.customId.startsWith('select_remove_')) {
+                const command = interaction.client.commands.get('operation');
+                if (command && command.handleRemoveAssignment) {
+                    await command.handleRemoveAssignment(interaction);
+                }
+            }
         } catch (error) {
             console.error('❌ Error handling dropdown selection:', error);
             if (!interaction.replied && !interaction.deferred) {
@@ -219,6 +254,13 @@ client.on(Events.InteractionCreate, async interaction => {
                 const command = interaction.client.commands.get('operation');
                 if (command && command.handleModal) {
                     await command.handleModal(interaction);
+                }
+            }
+            // Handle operation edit modals
+            else if (interaction.customId.startsWith('edit_form_')) {
+                const command = interaction.client.commands.get('operation');
+                if (command && command.handleEditModal) {
+                    await command.handleEditModal(interaction);
                 }
             }
         } catch (error) {
