@@ -1,0 +1,35 @@
+}
+🎯 Job Assignment: justawacko_ selected "F-67" for operation "TEST"
+🔍 Edit positions button - Operation ID: op_1756079514803
+🔍 Found operation: TEST
+❌ Error handling operation edit button: TypeError: Cannot read properties of undefined (reading 'map')
+    at Object.handleEditButton (/home/runner/workspace/commands/operation-start.js:1454:51)
+    at Client.<anonymous> (/home/runner/workspace/index.js:161:35)
+    at Client.emit (node:events:524:28)
+    at InteractionCreateAction.handle (/home/runner/workspace/node_modules/discord.js/src/client/actions/InteractionCreate.js:101:12)
+    at module.exports [as INTERACTION_CREATE] (/home/runner/workspace/node_modules/discord.js/src/client/websocket/handlers/INTERACTION_CREATE.js:4:36)
+    at WebSocketManager.handlePacket (/home/runner/workspace/node_modules/discord.js/src/client/websocket/WebSocketManager.js:352:31)
+    at WebSocketManager.<anonymous> (/home/runner/workspace/node_modules/discord.js/src/client/websocket/WebSocketManager.js:236:12)
+    at WebSocketManager.emit (/home/runner/workspace/node_modules/@vladfrangu/async_event_emitter/dist/index.cjs:287:31)
+    at WebSocketShard.<anonymous> (/home/runner/workspace/node_modules/@discordjs/ws/dist/index.js:1190:51)
+    at WebSocketShard.emit (/home/runner/workspace/node_modules/@vladfrangu/async_event_emitter/dist/index.cjs:287:31)
+🔍 Edit details button - Operation ID: op_1756079514803
+🔍 Found operation: TEST
+❌ Error handling operation edit button: ValidationError > s.string()
+  Expected a string primitive
+
+  Received:
+  | undefined
+
+    at _StringValidator.handle (/home/runner/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:2615:70)
+    at _StringValidator.parse (/home/runner/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:972:90)
+    at TextInputBuilder.setValue (/home/runner/workspace/node_modules/@discordjs/builders/dist/index.js:1376:38)
+    at Object.handleEditButton (/home/runner/workspace/commands/operation-start.js:1403:18)
+    at Client.<anonymous> (/home/runner/workspace/index.js:161:35)
+    at Client.emit (node:events:524:28)
+    at InteractionCreateAction.handle (/home/runner/workspace/node_modules/discord.js/src/client/actions/InteractionCreate.js:101:12)
+    at module.exports [as INTERACTION_CREATE] (/home/runner/workspace/node_modules/discord.js/src/client/websocket/handlers/INTERACTION_CREATE.js:4:36)
+    at WebSocketManager.handlePacket (/home/runner/workspace/node_modules/discord.js/src/client/websocket/WebSocketManager.js:352:31)
+    at WebSocketManager.<anonymous> (/home/runner/workspace/node_modules/discord.js/src/client/websocket/WebSocketManager.js:236:12)
+🔍 Manage assignments button - Operation ID: op_1756079514803
+🔍 Found operation: TEST

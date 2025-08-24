@@ -98,6 +98,26 @@
     "chatChannelId": "1409323381626634331",
     "guildId": "1403618918928613517",
     "active": true,
+    "scheduled": true,
+    "responses": {},
+    "jobAssignments": {}
+  },
+  "op_1756079514803": {
+    "name": "TEST",
+    "commander": "848356730256883744",
+    "startTime": 1756079517208,
+    "endTime": null,
+    "duration": null,
+    "objective": "TEST",
+    "classification": "RESTRICTED",
+    "notes": "None",
+    "roleId": "1409324374300823564",
+    "categoryId": "1409324375819157504",
+    "voiceChannelId": "1409324379783041108",
+    "infoChannelId": "1409324381179478097",
+    "chatChannelId": "1409324382572249178",
+    "guildId": "1403618918928613517",
+    "active": true,
     "scheduled": true
   }
 }

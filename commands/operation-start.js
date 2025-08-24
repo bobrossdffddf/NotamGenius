@@ -1400,7 +1400,7 @@ module.exports = {
                 .setCustomId('edit_details_input')
                 .setLabel('Operation Details')
                 .setStyle(TextInputStyle.Paragraph)
-                .setValue(operation.details)
+                .setValue(operation.details || 'No details provided')
                 .setRequired(true)
                 .setMaxLength(1500);
 
@@ -1408,7 +1408,7 @@ module.exports = {
                 .setCustomId('edit_leader_input')
                 .setLabel('Operation Leader')
                 .setStyle(TextInputStyle.Short)
-                .setValue(operation.leader)
+                .setValue(operation.leader || 'Unknown')
                 .setRequired(true)
                 .setMaxLength(100);
 
@@ -1416,7 +1416,7 @@ module.exports = {
                 .setCustomId('edit_time_input')
                 .setLabel('Operation Time')
                 .setStyle(TextInputStyle.Short)
-                .setValue(operation.time)
+                .setValue(operation.time || 'TBD')
                 .setRequired(true)
                 .setMaxLength(100);
 
@@ -1447,11 +1447,20 @@ module.exports = {
                 .setCustomId(`edit_positions_form_${operationId}`)
                 .setTitle(`Edit Positions: ${operation.name}`);
             
+            // Ensure availableJobs is an array
+            if (!operation.availableJobs) {
+                operation.availableJobs = [];
+            }
+            
+            const currentPositions = operation.availableJobs.length > 0 
+                ? operation.availableJobs.map(job => typeof job === 'object' ? `${job.name}:${job.maxCount || 'unlimited'}` : job).join('\n')
+                : 'F-22 Pilot:2\nF-35 Pilot:1\nGround Crew:unlimited';
+            
             const positionsInput = new TextInputBuilder()
                 .setCustomId('edit_positions_input')
                 .setLabel('Available Positions')
                 .setStyle(TextInputStyle.Paragraph)
-                .setValue(operation.availableJobs.map(job => typeof job === 'object' ? `${job.name}:${job.maxCount || 'unlimited'}` : job).join('\n'))
+                .setValue(currentPositions)
                 .setPlaceholder('Enter positions, one per line (e.g., "F-22 Pilot:2" or "Ground Crew:unlimited")')
                 .setRequired(true)
                 .setMaxLength(1000);
