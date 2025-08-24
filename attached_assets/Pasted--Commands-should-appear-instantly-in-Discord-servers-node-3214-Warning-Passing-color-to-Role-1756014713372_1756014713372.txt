@@ -1,0 +1,113 @@
+💡 Commands should appear instantly in Discord servers
+(node:3214) Warning: Passing "color" to RoleManager#create() is deprecated. Use "colors" instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✅ Added operation role to justawacko_
+Error updating operation briefing: CombinedError (3)
+  Received one or more errors
+
+  1 ExpectedValidationError > s.literal(V)
+  |   Expected values to be equals
+  | 
+  |   Expected:
+  |   | null
+  | 
+  |   Received:
+  |   | '2025-08-24T05:48:22.284000+00:00'
+
+  2 ValidationError > s.number()
+  |   Expected a number primitive
+  | 
+  |   Received:
+  |   | '2025-08-24T05:48:22.284000+00:00'
+
+  3 ValidationError > s.date()
+  |   Expected a Date
+  | 
+  |   Received:
+  |   | '2025-08-24T05:48:22.284000+00:00'
+
+    at _UnionValidator.handle (/home/runner/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:1965:23)
+    at _UnionValidator.parse (/home/runner/workspace/node_modules/@sapphire/shapeshift/dist/cjs/index.cjs:972:90)
+    at EmbedBuilder.setTimestamp (/home/runner/workspace/node_modules/@discordjs/builders/dist/index.js:369:24)
+    at Object.handleButton (/home/runner/workspace/commands/operation-start.js:872:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:133:21)
+📋 Operation Response: justawacko_ responded "yes" to operation "test" (Attending: 1)
+(node:3214) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+❌ Error stopping operation: DiscordAPIError[10008]: Unknown Message
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async SequentialHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1163:23)
+    at async SequentialHandler.queueRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:994:14)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async InteractionWebhook.editMessage (/home/runner/workspace/node_modules/discord.js/src/structures/Webhook.js:351:15)
+    at async ChatInputCommandInteraction.editReply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:254:17)
+    at async Object.execute (/home/runner/workspace/commands/operation-stop.js:99:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:93:13) {
+  requestBody: {
+    files: [],
+    json: {
+      content: '✅ **Operation test has been terminated.**\n' +
+        '\n' +
+        '🗑️ Role and channels have been cleaned up.\n' +
+        '📊 Operation ran for 0 hours and 0 minutes.',
+      tts: false,
+      nonce: undefined,
+      enforce_nonce: false,
+      embeds: undefined,
+      components: undefined,
+      username: undefined,
+      avatar_url: undefined,
+      allowed_mentions: undefined,
+      flags: undefined,
+      message_reference: undefined,
+      attachments: undefined,
+      sticker_ids: undefined,
+      thread_name: undefined,
+      applied_tags: undefined,
+      poll: undefined
+    }
+  },
+  rawError: { message: 'Unknown Message', code: 10008 },
+  code: 10008,
+  status: 404,
+  method: 'PATCH',
+  url: 'https://discord.com/api/v10/webhooks/1407735322229473491/aW50ZXJhY3Rpb246MTQwOTA1MTg3MTk3NjM1Nzk1MDpjUzhRMUNBTjNjYmtNZGltWGxNODE2RHBKM2w0cWtiWXZYNVhJUDBITDlKczRGSWFBYzd2cnR1T1ZWQm1KS25XTTRGb1FGSlMzMEdLQjVVcVEyNXJaY2dCZ0xSdU5ZMFpKdzBJd09QWjNDVXhpM3k1dDc5NjhvOXBSVExLWlpLcQ/messages/%40original'
+}
+❌ Error executing operation-stop: DiscordAPIError[10008]: Unknown Message
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async SequentialHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1163:23)
+    at async SequentialHandler.queueRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:994:14)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async InteractionWebhook.editMessage (/home/runner/workspace/node_modules/discord.js/src/structures/Webhook.js:351:15)
+    at async ChatInputCommandInteraction.editReply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:254:17)
+    at async Object.execute (/home/runner/workspace/commands/operation-stop.js:107:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:93:13) {
+  requestBody: {
+    files: [],
+    json: {
+      content: '❌ There was an error stopping the operation. Please try again.',
+      tts: false,
+      nonce: undefined,
+      enforce_nonce: false,
+      embeds: undefined,
+      components: undefined,
+      username: undefined,
+      avatar_url: undefined,
+      allowed_mentions: undefined,
+      flags: undefined,
+      message_reference: undefined,
+      attachments: undefined,
+      sticker_ids: undefined,
+      thread_name: undefined,
+      applied_tags: undefined,
+      poll: undefined
+    }
+  },
+  rawError: { message: 'Unknown Message', code: 10008 },
+  code: 10008,
+  status: 404,
+  method: 'PATCH',
+  url: 'https://discord.com/api/v10/webhooks/1407735322229473491/aW50ZXJhY3Rpb246MTQwOTA1MTg3MTk3NjM1Nzk1MDpjUzhRMUNBTjNjYmtNZGltWGxNODE2RHBKM2w0cWtiWXZYNVhJUDBITDlKczRGSWFBYzd2cnR1T1ZWQm1KS25XTTRGb1FGSlMzMEdLQjVVcVEyNXJaY2dCZ0xSdU5ZMFpKdzBJd09QWjNDVXhpM3k1dDc5NjhvOXBSVExLWlpLcQ/messages/%40original'
+}
