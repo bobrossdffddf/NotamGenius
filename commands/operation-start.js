@@ -28,8 +28,20 @@ module.exports = {
                 .setDescription('Schedule an operation and notify role members')
                 .addStringOption(option =>
                     option.setName('time')
-                        .setDescription('Operation time (e.g. "Dec 15 2PM EST" or "Tomorrow 6PM")')
+                        .setDescription('Select operation time')
                         .setRequired(true)
+                        .addChoices(
+                            { name: 'Today 6PM EST', value: 'Today 6PM EST' },
+                            { name: 'Today 8PM EST', value: 'Today 8PM EST' },
+                            { name: 'Tomorrow 2PM EST', value: 'Tomorrow 2PM EST' },
+                            { name: 'Tomorrow 4PM EST', value: 'Tomorrow 4PM EST' },
+                            { name: 'Tomorrow 6PM EST', value: 'Tomorrow 6PM EST' },
+                            { name: 'Tomorrow 8PM EST', value: 'Tomorrow 8PM EST' },
+                            { name: 'This Weekend 2PM EST', value: 'This Weekend 2PM EST' },
+                            { name: 'This Weekend 6PM EST', value: 'This Weekend 6PM EST' },
+                            { name: 'Next Monday 7PM EST', value: 'Next Monday 7PM EST' },
+                            { name: 'Custom Time (Specify Later)', value: 'Custom Time' }
+                        )
                 )
         ),
 
@@ -107,16 +119,19 @@ module.exports = {
 
     async handleOperationSchedule(interaction) {
         // Get time from command option
-        const operationTime = interaction.options.getString('time');
+        const selectedTime = interaction.options.getString('time');
         
         // Store the time for use in modal handling
-        const tempId = `temp_${interaction.user.id}_${Date.now()}`;
-        operationSchedules.set(tempId, { tempTime: operationTime });
+        const tempId = Date.now().toString();
+        operationSchedules.set(`temp_${interaction.user.id}_${tempId}`, { 
+            tempTime: selectedTime,
+            isCustomTime: selectedTime === 'Custom Time'
+        });
         
         // Create modal to collect operation details
         const modal = new ModalBuilder()
             .setCustomId(`operation_schedule_form_${tempId}`)
-            .setTitle(`Schedule Operation - Time: ${operationTime}`);
+            .setTitle(selectedTime === 'Custom Time' ? 'Schedule Operation - Custom Time' : `Schedule Operation - ${selectedTime}`);
 
         // Operation Name
         const operationNameInput = new TextInputBuilder()
@@ -126,6 +141,18 @@ module.exports = {
             .setPlaceholder('e.g., "Anchorage Resolution"')
             .setRequired(true)
             .setMaxLength(100);
+
+        // Custom Time Input (only if Custom Time was selected)
+        let customTimeInput = null;
+        if (selectedTime === 'Custom Time') {
+            customTimeInput = new TextInputBuilder()
+                .setCustomId('custom_operation_time')
+                .setLabel('Custom Operation Time')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('e.g., "Dec 25 3PM EST" or "Next Friday 7PM"')
+                .setRequired(true)
+                .setMaxLength(100);
+        }
 
         // Operation Details
         const operationDetailsInput = new TextInputBuilder()
@@ -159,7 +186,12 @@ module.exports = {
         const row4 = new ActionRowBuilder().addComponents(operationLeaderInput);
         const row5 = new ActionRowBuilder().addComponents(additionalNotesInput);
 
-        modal.addComponents(row1, row3, row4, row5);
+        if (selectedTime === 'Custom Time') {
+            const customTimeRow = new ActionRowBuilder().addComponents(customTimeInput);
+            modal.addComponents(row1, customTimeRow, row3, row4, row5);
+        } else {
+            modal.addComponents(row1, row3, row4, row5);
+        }
 
         await interaction.showModal(modal);
     },
@@ -175,8 +207,9 @@ module.exports = {
     async handleOperationScheduleModal(interaction) {
         try {
             // Extract temp ID from custom ID
-            const tempId = interaction.customId.split('_').slice(-1)[0];
-            const tempData = operationSchedules.get(`temp_${interaction.user.id}_${tempId}`);
+            const tempId = interaction.customId.split('_').pop();
+            const tempKey = `temp_${interaction.user.id}_${tempId}`;
+            const tempData = operationSchedules.get(tempKey);
             
             if (!tempData) {
                 await interaction.reply({
@@ -188,13 +221,21 @@ module.exports = {
             
             // Get form data
             const operationName = interaction.fields.getTextInputValue('schedule_operation_name');
-            const operationTime = tempData.tempTime; // Use time from command
+            
+            // Get time - either from dropdown selection or custom input
+            let operationTime;
+            if (tempData.isCustomTime) {
+                operationTime = interaction.fields.getTextInputValue('custom_operation_time');
+            } else {
+                operationTime = tempData.tempTime;
+            }
+            
             const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
             const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
             const additionalNotes = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
             
             // Clean up temp data
-            operationSchedules.delete(`temp_${interaction.user.id}_${tempId}`);
+            operationSchedules.delete(tempKey);
 
             // Store operation data
             const operationId = `op_${Date.now()}`;
