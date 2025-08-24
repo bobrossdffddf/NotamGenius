@@ -179,7 +179,17 @@ module.exports = {
 
         modal.addComponents(row1, row3, row4, row5);
 
-        await interaction.showModal(modal);
+        try {
+            await interaction.showModal(modal);
+        } catch (error) {
+            console.error('Error showing modal:', error);
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({
+                    content: '❌ Error opening form. Please try again.',
+                    flags: 64
+                });
+            }
+        }
     },
 
     async handleModal(interaction) {
@@ -192,6 +202,12 @@ module.exports = {
 
     async handleOperationScheduleModal(interaction) {
         try {
+            // Check if interaction is already handled
+            if (interaction.replied || interaction.deferred) {
+                console.log('Interaction already handled, skipping...');
+                return;
+            }
+            
             // Defer reply immediately to prevent timeout
             await interaction.deferReply({ flags: 64 });
 
@@ -254,57 +270,21 @@ module.exports = {
                 return;
             }
 
-            // Enhanced NOTAM-style DM notification
+            // Format according to user's exact specification
             const currentDate = new Date();
-            const notamNumber = `${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}-${operationId.split('_')[1].slice(-4)}`;
+            const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
             
-            const dmNotamContent = `🚁 **NOTICE TO AIRMEN (NOTAM) - URGENT**\n` +
-                `**NOTAM NUMBER:** ${notamNumber}\n` +
-                `**CLASSIFICATION:** FOR OFFICIAL USE ONLY\n` +
-                `**ISSUED:** ${currentDate.toISOString().replace('T', ' ').substring(0, 19)}Z\n\n` +
-                `⚠️ **OPERATIONAL ALERT - IMMEDIATE RESPONSE REQUIRED** ⚠️\n\n` +
-                `**OPERATION DESIGNATION:** ${operationName.toUpperCase()}\n` +
-                `**EFFECTIVE DATE/TIME:** ${operationTime}\n` +
-                `**OPERATION COMMANDER:** ${operationLeader}\n` +
-                `**STATUS:** PERSONNEL MOBILIZATION REQUIRED\n\n` +
-                `**= MISSION BRIEFING =**\n${operationDetails}\n\n` +
-                `**= ADDITIONAL OPERATIONAL DIRECTIVES =**\n${additionalNotes}\n\n` +
-                `**🚨 IMMEDIATE ACTION REQUIRED 🚨**\n` +
-                `CONFIRM YOUR OPERATIONAL AVAILABILITY\n` +
-                `RESPONSE DEADLINE: 30 MINUTES FROM RECEIPT\n\n` +
-                `**Use the buttons below to respond:**`;
+            const dmNotamContent = `⚠️ OPERATIONAL DEPLOYMENT NOTICE\n🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n\nOPERATION DESIGNATION: ${operationName.toUpperCase()}\nEFFECTIVE TIME: ${operationTime}\nOPERATION COMMANDER: ${operationLeader}\nCLASSIFICATION: RESTRICTED\n\nMISSION BRIEF:\n${operationDetails}\n\nADDITIONAL DIRECTIVES:\n${additionalNotes}\n\nPERSONNEL RESPONSE REQUIRED:\nConfirm your operational availability using the response options below.\n\nOPERATION ID: ${operationId}\nISSUED BY: ${interaction.user.tag} | ${timeStamp}\n——————————————————————————————————————————————————————\n\nOperation Details: [${operationDetails}]\n\n——————————————————————————————————————————————————————\n\n[Operation Positions:\n\nOperation Leader: ${operationLeader}\nResponse Required: All personnel must respond within 30 minutes\n]\n\n——————————————————————————————————————————————————————\n\nThe Information is subject to change. A notification will go out following any vital changes to the operation or its information. This is a *preliminary* operation briefing, an official one is to be held prior to the operation.\n\nPlease ping [${operationLeader}] to reserve your spot/role in the operation\n\nThe operation is subject to change time and/or date if availability\n\n${additionalNotes}\n\n——————————————————————————————————————————————————————\n\nEND OF OPERATION ${operationName.toUpperCase()} | GENERATED [${currentDate.toISOString().substring(11, 16)}z]`;
 
             const operationEmbed = new EmbedBuilder()
-                .setTitle('🚨 **DEPARTMENT OF DEFENSE - EMERGENCY ALERT**')
                 .setDescription(dmNotamContent)
-                .setColor(0xCC0000)
-                .setFooter({ text: `CLASSIFIED FOUO | RESPOND WITHIN 30 MINUTES | ${notamNumber}` })
+                .setColor(0xFF6B35)
                 .setTimestamp();
 
-            // Enhanced channel announcement (reuse currentDate and notamNumber from above)
-            const channelNotamContent = `🚁 **NOTICE TO AIRMEN (NOTAM)**\n` +
-                `**NOTAM NUMBER:** ${notamNumber}\n` +
-                `**CLASSIFICATION:** FOR OFFICIAL USE ONLY\n` +
-                `**ISSUED:** ${currentDate.toISOString().replace('T', ' ').substring(0, 19)}Z\n\n` +
-                `⚠️ **OPERATIONAL ALERT - IMMEDIATE ATTENTION REQUIRED** ⚠️\n\n` +
-                `**OPERATION DESIGNATION:** ${operationName.toUpperCase()}\n` +
-                `**EFFECTIVE DATE/TIME:** ${operationTime}\n` +
-                `**OPERATION COMMANDER:** ${operationLeader}\n` +
-                `**STATUS:** PERSONNEL MOBILIZATION REQUIRED\n\n` +
-                `**= MISSION BRIEFING =**\n${operationDetails}\n\n` +
-                `**= ADDITIONAL OPERATIONAL DIRECTIVES =**\n${additionalNotes}\n\n` +
-                `**🚨 IMMEDIATE ACTION REQUIRED 🚨**\n` +
-                `ALL PERSONNEL MUST CONFIRM OPERATIONAL AVAILABILITY\n` +
-                `RESPONSE DEADLINE: 30 MINUTES FROM RECEIPT\n\n` +
-                `**AUTHORITY:** DoD EMERGENCY ALERT SYSTEM\n` +
-                `**ISSUED BY:** ${interaction.user.tag}\n` +
-                `**REF:** Operation ${operationId}`;
-
+            // Channel announcement uses same format as DM
             const channelEmbed = new EmbedBuilder()
-                .setTitle('🚨 **DEPARTMENT OF DEFENSE - EMERGENCY ALERT**')
-                .setDescription(channelNotamContent)
-                .setColor(0xCC0000)
-                .setFooter({ text: `CLASSIFIED FOUO | RESPOND WITHIN 30 MINUTES | ${notamNumber}` })
+                .setDescription(dmNotamContent)
+                .setColor(0xFF6B35)
                 .setTimestamp();
 
             // Create response buttons
@@ -409,9 +389,24 @@ module.exports = {
 
         } catch (error) {
             console.error('Error processing operation schedule modal:', error);
-            await interaction.editReply({
-                content: '❌ **Error**: There was an error processing your operation schedule. Please try again.'
-            });
+            if (!interaction.replied && !interaction.deferred) {
+                try {
+                    await interaction.reply({
+                        content: '❌ **Error**: There was an error processing your operation schedule. Please try again.',
+                        flags: 64
+                    });
+                } catch (replyError) {
+                    console.error('Failed to send error reply:', replyError);
+                }
+            } else {
+                try {
+                    await interaction.editReply({
+                        content: '❌ **Error**: There was an error processing your operation schedule. Please try again.'
+                    });
+                } catch (editError) {
+                    console.error('Failed to edit reply:', editError);
+                }
+            }
         }
     },
 
@@ -735,7 +730,7 @@ module.exports = {
             return;
         }
 
-        const operationId = interaction.customId.split('_')[2];
+        const operationId = interaction.customId.split('_').slice(2).join('_'); // Handle IDs with underscores
         const operation = operationSchedules.get(operationId);
 
         if (!operation) {
@@ -784,7 +779,7 @@ module.exports = {
             for (const [memberId, member] of membersWithRole) {
                 try {
                     await member.send({
-                        content: `**🚨 URGENT - DEPARTMENT OF DEFENSE ALERT**\n**FROM: ${interaction.guild.name} COMMAND**\n**SECURITY CLASSIFICATION: FOR OFFICIAL USE ONLY**\n\n⚠️ **IMMEDIATE RESPONSE REQUIRED** ⚠️`,
+                        content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
                         embeds: [operationEmbed],
                         components: [responseRow]
                     });
