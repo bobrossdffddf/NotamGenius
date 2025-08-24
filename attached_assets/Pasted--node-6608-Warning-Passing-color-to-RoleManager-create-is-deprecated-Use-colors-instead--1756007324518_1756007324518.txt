@@ -1,0 +1,45 @@
+(node:6608) Warning: Passing "color" to RoleManager#create() is deprecated. Use "colors" instead.
+❌ Error stopping operation: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Object.execute (/home/runner/workspace/commands/operation-stop.js:98:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:94:13) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409021409585397901/aW50ZXJhY3Rpb246MTQwOTAyMTQwOTU4NTM5NzkwMTpDUW5UdHBFM2I1YWFZSmRUSDB1cVh3TVRZaVZLMTk2SEVScHhTUmJ4Nm93Qk4xMkhNU3NSRG9XdndtalprSnJLRXZLc2Q4OU5ZcWVWNnphdkxDQW9abUJNNmxIV1FINWcyUWg4TXlINnN6QnYwelQ3MUdqeGk5UXV6Z0wzOHFNNA/callback?with_response=false'
+}
+❌ Error executing operation-stop: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Object.execute (/home/runner/workspace/commands/operation-stop.js:108:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:94:13) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409021409585397901/aW50ZXJhY3Rpb246MTQwOTAyMTQwOTU4NTM5NzkwMTpDUW5UdHBFM2I1YWFZSmRUSDB1cVh3TVRZaVZLMTk2SEVScHhTUmJ4Nm93Qk4xMkhNU3NSRG9XdndtalprSnJLRXZLc2Q4OU5ZcWVWNnphdkxDQW9abUJNNmxIV1FINWcyUWg4TXlINnN6QnYwelQ3MUdqeGk5UXV6Z0wzOHFNNA/callback?with_response=false'
+}
+❌ Discord client error: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:106:17) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409021409585397901/aW50ZXJhY3Rpb246MTQwOTAyMTQwOTU4NTM5NzkwMTpDUW5UdHBFM2I1YWFZSmRUSDB1cVh3TVRZaVZLMTk2SEVScHhTUmJ4Nm93Qk4xMkhNU3NSRG9XdndtalprSnJLRXZLc2Q4OU5ZcWVWNnphdkxDQW9abUJNNmxIV1FINWcyUWg4TXlINnN6QnYwelQ3MUdqeGk5UXV6Z0wzOHFNNA/callback?with_response=false'
+}
