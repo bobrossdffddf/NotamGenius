@@ -84,6 +84,9 @@ module.exports = {
     async handleModal(interaction) {
         if (interaction.customId !== 'notam_single_form') return;
 
+        // Defer reply immediately to prevent timeout
+        await interaction.deferReply({ ephemeral: true });
+
         // Get all form values
         const operationName = interaction.fields.getTextInputValue('operation_name');
         const operationLeader = interaction.fields.getTextInputValue('operation_leader');
@@ -109,9 +112,8 @@ module.exports = {
         const notamContent = generateNotam(notamData);
         
         // Reply with the generated NOTAM in a copyable code block
-        await interaction.reply({
-            content: `# ✅ NOTAM Generated Successfully!\n\n**Copy the text below:**\n\`\`\`\n${notamContent}\n\`\`\``,
-            flags: 64
+        await interaction.editReply({
+            content: `# ✅ NOTAM Generated Successfully!\n\n**Copy the text below:**\n\`\`\`\n${notamContent}\n\`\`\``
         });
     },
 

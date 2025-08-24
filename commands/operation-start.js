@@ -87,6 +87,9 @@ module.exports = {
     async handleModal(interaction) {
         if (interaction.customId !== 'operation_start_form') return;
 
+        // Defer reply immediately to prevent timeout
+        await interaction.deferReply({ ephemeral: true });
+
         const operationName = interaction.fields.getTextInputValue('operation_name');
         const duration = parseInt(interaction.fields.getTextInputValue('operation_duration'));
         const objective = interaction.fields.getTextInputValue('operation_objective');
@@ -94,9 +97,8 @@ module.exports = {
         const notes = interaction.fields.getTextInputValue('operation_notes') || 'None';
 
         if (isNaN(duration) || duration <= 0 || duration > 168) {
-            await interaction.reply({
-                content: '❌ Invalid duration. Please enter a number between 1 and 168 hours.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ Invalid duration. Please enter a number between 1 and 168 hours.'
             });
             return;
         }
@@ -244,20 +246,18 @@ module.exports = {
                 await this.checkOperationEnd(operationId);
             }, duration * 60 * 60 * 1000);
 
-            await interaction.reply({
+            await interaction.editReply({
                 content: `✅ **Operation ${operationName} has been initiated!**\n\n` +
                         `🏷️ Role: <@&${operationRole.id}>\n` +
                         `📁 Category: ${categoryName}\n` +
                         `⏰ Duration: ${duration} hours\n\n` +
-                        `Use \`/operation add\` to assign personnel to this operation.`,
-                flags: 64
+                        `Use \`/operation add\` to assign personnel to this operation.`
             });
 
         } catch (error) {
             console.error('❌ Error creating operation:', error);
-            await interaction.reply({
-                content: '❌ There was an error creating the operation. Please try again.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ There was an error creating the operation. Please try again.'
             });
         }
     },
