@@ -247,9 +247,119 @@ module.exports = {
                 guildId: interaction.guild.id,
                 attendingCount: 0,
                 operationRoleId: null,
-                detailsMessageId: null
+                detailsMessageId: null,
+                categoryId: null,
+                voiceChannelId: null,
+                infoChannelId: null,
+                chatChannelId: null
             };
             operationSchedules.set(operationId, operationData);
+
+            // Create operation infrastructure (role, category, channels)
+            const scheduleOperationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
+            const scheduleCategoryName = `🚁 Operation: ${operationName}`;
+            
+            let scheduleOperationRole, scheduleCategory, scheduleVoiceChannel, scheduleInfoChannel, scheduleChatChannel;
+            
+            try {
+                // Create operation role
+                scheduleOperationRole = await interaction.guild.roles.create({
+                    name: scheduleOperationRoleName,
+                    color: 0xFF6B35,
+                    mentionable: true,
+                    reason: `Operation ${operationName} participant role`
+                });
+                operationData.operationRoleId = scheduleOperationRole.id;
+                
+                // Create operation category
+                scheduleCategory = await interaction.guild.channels.create({
+                    name: scheduleCategoryName,
+                    type: ChannelType.GuildCategory,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        },
+                        {
+                            id: scheduleOperationRole.id,
+                            allow: [PermissionFlagsBits.ViewChannel]
+                        }
+                    ]
+                });
+                operationData.categoryId = scheduleCategory.id;
+                
+                // Add admin permissions to category
+                const adminRoles = interaction.guild.roles.cache.filter(role => 
+                    role.permissions.has(PermissionFlagsBits.Administrator) ||
+                    role.permissions.has(PermissionFlagsBits.ManageGuild)
+                );
+                
+                for (const role of adminRoles.values()) {
+                    await scheduleCategory.permissionOverwrites.create(role, {
+                        ViewChannel: true,
+                        ManageChannels: true,
+                        ManageMessages: true
+                    });
+                }
+                
+                // Create voice channel
+                scheduleVoiceChannel = await interaction.guild.channels.create({
+                    name: `🎧 Operation: ${operationName} Comms`,
+                    type: ChannelType.GuildVoice,
+                    parent: scheduleCategory.id,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        },
+                        {
+                            id: scheduleOperationRole.id,
+                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
+                        }
+                    ]
+                });
+                operationData.voiceChannelId = scheduleVoiceChannel.id;
+                
+                // Create information channel (admin only posting)
+                scheduleInfoChannel = await interaction.guild.channels.create({
+                    name: `📋 Operation: ${operationName} Information`,
+                    type: ChannelType.GuildText,
+                    parent: scheduleCategory.id,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        },
+                        {
+                            id: scheduleOperationRole.id,
+                            allow: [PermissionFlagsBits.ViewChannel],
+                            deny: [PermissionFlagsBits.SendMessages]
+                        }
+                    ]
+                });
+                operationData.infoChannelId = scheduleInfoChannel.id;
+                
+                // Create general chat channel
+                scheduleChatChannel = await interaction.guild.channels.create({
+                    name: `💬 Operation: ${operationName} Chat`,
+                    type: ChannelType.GuildText,
+                    parent: scheduleCategory.id,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        },
+                        {
+                            id: scheduleOperationRole.id,
+                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                        }
+                    ]
+                });
+                operationData.chatChannelId = scheduleChatChannel.id;
+                
+            } catch (error) {
+                console.error('Error creating operation infrastructure:', error);
+            }
 
             // Find target role
             const targetRole = interaction.guild.roles.cache.get(TARGET_ROLE_ID);
@@ -274,7 +384,7 @@ module.exports = {
             const currentDate = new Date();
             const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
             
-            const dmNotamContent = `⚠️ OPERATIONAL DEPLOYMENT NOTICE\n🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n\nOPERATION DESIGNATION: ${operationName.toUpperCase()}\nEFFECTIVE TIME: ${operationTime}\nOPERATION COMMANDER: ${operationLeader}\nCLASSIFICATION: RESTRICTED\n\nMISSION BRIEF:\n${operationDetails}\n\nADDITIONAL DIRECTIVES:\n${additionalNotes}\n\nPERSONNEL RESPONSE REQUIRED:\nConfirm your operational availability using the response options below.\n\nOPERATION ID: ${operationId}\nISSUED BY: ${interaction.user.tag} | ${timeStamp}\n——————————————————————————————————————————————————————\n\nOperation Details: [${operationDetails}]\n\n——————————————————————————————————————————————————————\n\n[Operation Positions:\n\nOperation Leader: ${operationLeader}\nResponse Required: All personnel must respond within 30 minutes\n]\n\n——————————————————————————————————————————————————————\n\nThe Information is subject to change. A notification will go out following any vital changes to the operation or its information. This is a *preliminary* operation briefing, an official one is to be held prior to the operation.\n\nPlease ping [${operationLeader}] to reserve your spot/role in the operation\n\nThe operation is subject to change time and/or date if availability\n\n${additionalNotes}\n\n——————————————————————————————————————————————————————\n\nEND OF OPERATION ${operationName.toUpperCase()} | GENERATED [${currentDate.toISOString().substring(11, 16)}z]`;
+            const dmNotamContent = `⚠️ **OPERATIONAL DEPLOYMENT NOTICE**\n🚁 **NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT**\n\n**OPERATION DESIGNATION:** ${operationName.toUpperCase()}\n**EFFECTIVE TIME:** ${operationTime}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n\n**MISSION BRIEF:**\n${operationDetails}\n\n**ADDITIONAL DIRECTIVES:**\n${additionalNotes}\n\n**PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}\n\n# Operation Details\n\n[${operationDetails}]\n\n# Operation Positions\n\n**Operation Leader:** ${operationLeader}\n**Response Required:** All personnel must respond within 30 minutes\n\n# Important Information\n\nThe Information is subject to change. A notification will go out following any vital changes to the operation or its information. This is a *preliminary* operation briefing, an official one is to be held prior to the operation.\n\nPlease ping [${operationLeader}] to reserve your spot/role in the operation\n\nThe operation is subject to change time and/or date if availability\n\n${additionalNotes}\n\n# End of Operation\n\n**END OF OPERATION ${operationName.toUpperCase()} | GENERATED [${currentDate.toISOString().substring(11, 16)}z]**`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -307,7 +417,7 @@ module.exports = {
             // Show preview to admin first
             const previewEmbed = new EmbedBuilder()
                 .setTitle('🔍 **OPERATION PREVIEW**')
-                .setDescription('This is how the message will appear to users. Confirm to send to all members with the target role.')
+                .setDescription(`This is how the message will appear to users. Confirm to send to all members with the target role.\n\n**Channels Created:**\n${scheduleCategory ? `📁 Category: ${scheduleCategory.name}` : ''}\n${scheduleVoiceChannel ? `🎧 Voice: ${scheduleVoiceChannel.name}` : ''}\n${scheduleInfoChannel ? `📋 Info: ${scheduleInfoChannel.name}` : ''}\n${scheduleChatChannel ? `💬 Chat: ${scheduleChatChannel.name}` : ''}\n${scheduleOperationRole ? `🏷️ Role: ${scheduleOperationRole.name}` : ''}`)
                 .setColor(0x0099FF);
 
             const confirmButtons = new ActionRowBuilder()
@@ -633,7 +743,9 @@ module.exports = {
         // Handle operation response buttons
         if (!interaction.customId.startsWith('op_response_')) return;
 
-        const [, , response, operationId] = interaction.customId.split('_');
+        const parts = interaction.customId.split('_');
+        const response = parts[2];
+        const operationId = parts.slice(3).join('_'); // Handle IDs with underscores
         const operation = operationSchedules.get(operationId);
 
         if (!operation) {
