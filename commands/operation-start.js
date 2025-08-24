@@ -119,18 +119,18 @@ module.exports = {
             });
             return;
         }
-        
+
         // Get date and time from command options
         const operationDate = interaction.options.getString('date');
         const operationTime = interaction.options.getString('time');
         const fullDateTime = `${operationDate} at ${operationTime} EST`;
-        
+
         // Store the time for use in modal handling
         const tempId = Date.now().toString();
         operationSchedules.set(`temp_${interaction.user.id}_${tempId}`, { 
             tempTime: fullDateTime
         });
-        
+
         // Create modal to collect operation details
         const modal = new ModalBuilder()
             .setCustomId(`operation_schedule_form_${tempId}`)
@@ -207,7 +207,7 @@ module.exports = {
                 console.log('Interaction already handled, skipping...');
                 return;
             }
-            
+
             // Defer reply immediately to prevent timeout
             await interaction.deferReply({ flags: 64 });
 
@@ -215,22 +215,22 @@ module.exports = {
             const tempId = interaction.customId.split('_').pop();
             const tempKey = `temp_${interaction.user.id}_${tempId}`;
             const tempData = operationSchedules.get(tempKey);
-            
+
             if (!tempData) {
                 await interaction.editReply({
                     content: '❌ Session expired. Please try the command again.'
                 });
                 return;
             }
-            
+
             // Get form data
             const operationName = interaction.fields.getTextInputValue('schedule_operation_name');
             const operationTime = tempData.tempTime; // Use combined date/time from command
-            
+
             const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
             const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
             const additionalNotes = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
-            
+
             // Clean up temp data
             operationSchedules.delete(tempKey);
 
@@ -258,9 +258,9 @@ module.exports = {
             // Create operation infrastructure (role, category, channels)
             const scheduleOperationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
             const scheduleCategoryName = `🚁 Operation: ${operationName}`;
-            
+
             let scheduleOperationRole, scheduleCategory, scheduleVoiceChannel, scheduleInfoChannel, scheduleChatChannel;
-            
+
             try {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
@@ -270,7 +270,7 @@ module.exports = {
                     reason: `Operation ${operationName} participant role`
                 });
                 operationData.operationRoleId = scheduleOperationRole.id;
-                
+
                 // Create operation category
                 scheduleCategory = await interaction.guild.channels.create({
                     name: scheduleCategoryName,
@@ -287,13 +287,13 @@ module.exports = {
                     ]
                 });
                 operationData.categoryId = scheduleCategory.id;
-                
+
                 // Add admin permissions to category
                 const adminRoles = interaction.guild.roles.cache.filter(role => 
                     role.permissions.has(PermissionFlagsBits.Administrator) ||
                     role.permissions.has(PermissionFlagsBits.ManageGuild)
                 );
-                
+
                 for (const role of adminRoles.values()) {
                     await scheduleCategory.permissionOverwrites.create(role, {
                         ViewChannel: true,
@@ -301,7 +301,7 @@ module.exports = {
                         ManageMessages: true
                     });
                 }
-                
+
                 // Create voice channel
                 scheduleVoiceChannel = await interaction.guild.channels.create({
                     name: `🎧 Operation: ${operationName} Comms`,
@@ -319,7 +319,7 @@ module.exports = {
                     ]
                 });
                 operationData.voiceChannelId = scheduleVoiceChannel.id;
-                
+
                 // Create information channel (admin only posting)
                 scheduleInfoChannel = await interaction.guild.channels.create({
                     name: `📋 Operation: ${operationName} Information`,
@@ -338,7 +338,7 @@ module.exports = {
                     ]
                 });
                 operationData.infoChannelId = scheduleInfoChannel.id;
-                
+
                 // Create general chat channel
                 scheduleChatChannel = await interaction.guild.channels.create({
                     name: `💬 Operation: ${operationName} Chat`,
@@ -356,7 +356,7 @@ module.exports = {
                     ]
                 });
                 operationData.chatChannelId = scheduleChatChannel.id;
-                
+
             } catch (error) {
                 console.error('Error creating operation infrastructure:', error);
             }
@@ -372,7 +372,7 @@ module.exports = {
 
             // Get all members with the target role
             const membersWithRole = targetRole.members;
-            
+
             if (membersWithRole.size === 0) {
                 await interaction.editReply({
                     content: '❌ **No Members**: No members found with the target role.'
@@ -383,16 +383,16 @@ module.exports = {
             // Format according to user's exact specification
             const currentDate = new Date();
             const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
-            
+
             // Create Discord timestamp from operation time
             const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
             const timeMatch = operationTime.match(timeRegex);
             let discordTimestamp = '<t:1756013700:R>'; // fallback
-            
+
             if (timeMatch) {
                 const [, month, day, hour, minute, timezone] = timeMatch;
                 const year = new Date().getFullYear();
-                
+
                 // Create date object in the specified timezone
                 let date;
                 if (timezone === 'EST' || timezone === 'EDT') {
@@ -411,13 +411,13 @@ module.exports = {
                     // Default to local time if timezone not recognized
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
                 }
-                
-                // Create Unix timestamp and Discord relative timestamp
+
+                // Create Unix timestamp and Discord timestamp with full format
                 const unixTimestamp = Math.floor(date.getTime() / 1000);
-                discordTimestamp = `<t:${unixTimestamp}:R>`;
+                discordTimestamp = `<t:${unixTimestamp}:F> (${`<t:${unixTimestamp}:R>`})`;
             }
-            
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ EFFECTIVE TIME:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ STARTS:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -781,7 +781,7 @@ module.exports = {
             await this.handleConfirmationButton(interaction);
             return;
         }
-        
+
         // Handle operation response buttons
         if (!interaction.customId.startsWith('op_response_')) return;
 
@@ -799,7 +799,7 @@ module.exports = {
         }
 
         const previousResponse = operation.responses.get(interaction.user.id);
-        
+
         // Store/update user response
         operation.responses.set(interaction.user.id, {
             response: response,
@@ -850,7 +850,7 @@ module.exports = {
                     // Find the briefing message (should be the first embed message in the channel)
                     const messages = await infoChannel.messages.fetch({ limit: 10 });
                     const briefingMessage = messages.find(msg => msg.embeds.length > 0 && msg.embeds[0].title && msg.embeds[0].title.includes('OPERATION'));
-                    
+
                     if (briefingMessage) {
                         const originalEmbed = briefingMessage.embeds[0];
                         const updatedEmbed = new EmbedBuilder()
@@ -858,7 +858,7 @@ module.exports = {
                             .setColor(originalEmbed.color)
                             .setTimestamp(new Date())
                             .setFooter(originalEmbed.footer);
-                        
+
                         // Update fields, especially the attending count
                         const fields = originalEmbed.fields.map(field => {
                             if (field.name === '👥 Currently Attending') {
@@ -866,7 +866,7 @@ module.exports = {
                             }
                             return field;
                         });
-                        
+
                         updatedEmbed.addFields(fields);
                         await briefingMessage.edit({ embeds: [updatedEmbed] });
                     }
@@ -875,7 +875,7 @@ module.exports = {
                 console.error('Error updating operation briefing:', error);
             }
         }
-        
+
         // Update details message with new attending count
         if (operation.detailsMessageId) {
             try {
@@ -884,17 +884,17 @@ module.exports = {
                 if (detailsChannel) {
                     const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
                     const originalEmbed = detailsMessage.embeds[0];
-                    
+
                     // Update the consolidated NOTAM content with new attending count
                     const updatedContent = originalEmbed.description.replace(
                         /\*\*👥 CURRENTLY ATTENDING:\*\* \d+/,
                         `**👥 CURRENTLY ATTENDING:** ${operation.attendingCount}`
                     );
-                    
+
                     const updatedEmbed = new EmbedBuilder()
                         .setDescription(updatedContent)
                         .setColor(originalEmbed.color);
-                        
+
                     await detailsMessage.edit({ embeds: [updatedEmbed] });
                 }
             } catch (error) {
@@ -941,7 +941,7 @@ module.exports = {
         if (interaction.customId.startsWith('cancel_send_')) {
             // Cancel the operation
             operationSchedules.delete(operationId);
-            
+
             // Clean up operation role if created
             if (operation.operationRoleId) {
                 try {
@@ -965,7 +965,7 @@ module.exports = {
         if (interaction.customId.startsWith('confirm_send_')) {
             // Send DMs to all members with the role
             await interaction.deferUpdate();
-            
+
             let successCount = 0;
             let failCount = 0;
 
