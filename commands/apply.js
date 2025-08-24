@@ -56,7 +56,7 @@ module.exports = {
         if (!certification) {
             await interaction.reply({
                 content: '❌ Invalid certification type!',
-                ephemeral: true
+                flags: 64
             });
             return;
         }
@@ -67,7 +67,7 @@ module.exports = {
             if (member.roles.cache.has(certification.roleId)) {
                 await interaction.reply({
                     content: `❌ You already have the **${certification.name}** certification!`,
-                    ephemeral: true
+                    flags: 64
                 });
                 return;
             }
@@ -115,7 +115,7 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            await interaction.reply({ embeds: [successEmbed], ephemeral: true });
+            await interaction.reply({ embeds: [successEmbed], flags: 64 });
 
             // Log the application
             console.log(`📝 Certification application: ${user.tag} applied for ${certification.name}`);
@@ -124,7 +124,7 @@ module.exports = {
             console.error('❌ Error processing certification application:', error);
             await interaction.reply({
                 content: '❌ There was an error processing your application. Please try again later.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
