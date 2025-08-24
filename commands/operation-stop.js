@@ -7,10 +7,12 @@ module.exports = {
         .setDescription('Stop the active operation (Admin only)'),
 
     async execute(interaction) {
+        // Defer reply immediately to prevent timeout
+        await interaction.deferReply({ ephemeral: true });
+
         if (!checkAdminPermissions(interaction.member)) {
-            await interaction.reply({
-                content: '❌ **Access Denied**\nOnly administrators can stop operations.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ **Access Denied**\nOnly administrators can manage operations.'
             });
             return;
         }
@@ -21,16 +23,15 @@ module.exports = {
         const activeOperation = operationStart.getActiveOperation(interaction.guild.id);
 
         if (!activeOperation) {
-            await interaction.reply({
-                content: '❌ No active operation found.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ No active operation found in this server.'
             });
             return;
         }
 
         try {
             const guild = interaction.guild;
-            
+
             // Get all operation components
             const operationRole = guild.roles.cache.get(activeOperation.roleId);
             const category = guild.channels.cache.get(activeOperation.categoryId);
@@ -95,19 +96,16 @@ module.exports = {
             // Mark operation as inactive
             activeOperations.set(activeOperation.id, { ...activeOperation, active: false });
 
-            await interaction.reply({
-                content: `✅ **Operation ${activeOperation.name} has been concluded.**\n\n` +
-                        `📊 Duration: ${duration} hours\n` +
-                        `🗑️ All operation channels and roles have been cleaned up.\n` +
-                        `📋 Final report has been logged.`,
-                flags: 64
+            await interaction.editReply({
+                content: `✅ **Operation ${activeOperation.name} has been terminated.**\n\n` +
+                        `🗑️ Role and channels have been cleaned up.\n` +
+                        `📊 Operation ran for ${Math.floor(duration / (1000 * 60 * 60))} hours and ${Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60))} minutes.`
             });
 
         } catch (error) {
             console.error('❌ Error stopping operation:', error);
-            await interaction.reply({
-                content: '❌ There was an error stopping the operation. Some cleanup may need to be done manually.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ There was an error stopping the operation. Please try again.'
             });
         }
     }
