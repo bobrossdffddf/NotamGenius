@@ -298,23 +298,36 @@ Confirm your operational availability using the response options below.
                         .setStyle(ButtonStyle.Danger)
                 );
 
-            // Send DMs to all members with the role
-            let successCount = 0;
-            let failCount = 0;
+            // Show preview to admin first
+            const previewEmbed = new EmbedBuilder()
+                .setTitle('🔍 **OPERATION PREVIEW**')
+                .setDescription('This is how the message will appear to users. Confirm to send to all members with the target role.')
+                .setColor(0x0099FF);
 
-            for (const [memberId, member] of membersWithRole) {
-                try {
-                    await member.send({
-                        content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
-                        embeds: [operationEmbed],
-                        components: [responseRow]
-                    });
-                    successCount++;
-                } catch (error) {
-                    console.error(`Failed to send DM to ${member.user.tag}:`, error);
-                    failCount++;
-                }
-            }
+            const confirmButtons = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`confirm_send_${operationId}`)
+                        .setLabel('✅ Send to All')
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setCustomId(`cancel_send_${operationId}`)
+                        .setLabel('❌ Cancel')
+                        .setStyle(ButtonStyle.Danger)
+                );
+
+            await interaction.editReply({
+                content: `**📝 PREVIEW - Operation: ${operationName}**`,
+                embeds: [previewEmbed, operationEmbed],
+                components: [confirmButtons]
+            });
+
+            // Store additional data for confirmation
+            operationData.membersWithRole = membersWithRole;
+            operationData.targetRole = targetRole;
+            operationData.responseRow = responseRow;
+            operationData.operationEmbed = operationEmbed;
+            operationSchedules.set(operationId, operationData);
 
             // Create operation role
             const operationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
@@ -600,6 +613,13 @@ Confirm your operational availability using the response options below.
     },
 
     async handleButton(interaction) {
+        // Handle confirmation buttons for sending operation alerts
+        if (interaction.customId.startsWith('confirm_send_') || interaction.customId.startsWith('cancel_send_')) {
+            await this.handleConfirmationButton(interaction);
+            return;
+        }
+        
+        // Handle operation response buttons
         if (!interaction.customId.startsWith('op_response_')) return;
 
         const [, , response, operationId] = interaction.customId.split('_');
@@ -687,5 +707,95 @@ Confirm your operational availability using the response options below.
         });
 
         console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}" (Attending: ${operation.attendingCount})`);
+    },
+
+    async handleConfirmationButton(interaction) {
+        // Check admin permissions
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can manage operations.',
+                flags: 64
+            });
+            return;
+        }
+
+        const operationId = interaction.customId.split('_')[2];
+        const operation = operationSchedules.get(operationId);
+
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Error**: Operation not found or expired.',
+                flags: 64
+            });
+            return;
+        }
+
+        if (interaction.customId.startsWith('cancel_send_')) {
+            // Cancel the operation
+            operationSchedules.delete(operationId);
+            
+            // Clean up operation role if created
+            if (operation.operationRoleId) {
+                try {
+                    const role = interaction.guild.roles.cache.get(operation.operationRoleId);
+                    if (role) {
+                        await role.delete('Operation cancelled by admin');
+                    }
+                } catch (error) {
+                    console.error('Error deleting operation role:', error);
+                }
+            }
+
+            await interaction.update({
+                content: '❌ **Operation Cancelled**',
+                embeds: [],
+                components: []
+            });
+            return;
+        }
+
+        if (interaction.customId.startsWith('confirm_send_')) {
+            // Send DMs to all members with the role
+            await interaction.deferUpdate();
+            
+            let successCount = 0;
+            let failCount = 0;
+
+            const membersWithRole = operation.membersWithRole;
+            const operationEmbed = operation.operationEmbed;
+            const responseRow = operation.responseRow;
+
+            for (const [memberId, member] of membersWithRole) {
+                try {
+                    await member.send({
+                        content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
+                        embeds: [operationEmbed],
+                        components: [responseRow]
+                    });
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to send DM to ${member.user.tag}:`, error);
+                    failCount++;
+                }
+            }
+
+            // Send final confirmation
+            const confirmEmbed = new EmbedBuilder()
+                .setTitle('✅ **Operation Scheduled Successfully**')
+                .setDescription(`**${operation.name}** notifications have been sent.`)
+                .addFields(
+                    { name: '📊 **Delivery Stats**', value: `✅ Sent: ${successCount}\n❌ Failed: ${failCount}\n👥 Total: ${membersWithRole.size}`, inline: true },
+                    { name: '🎯 **Target Role**', value: operation.targetRole.name, inline: true },
+                    { name: '🆔 **Operation ID**', value: operationId, inline: true }
+                )
+                .setColor(0x00FF00)
+                .setTimestamp();
+
+            await interaction.editReply({
+                content: `🚁 **Operation ${operation.name} Deployed!**`,
+                embeds: [confirmEmbed],
+                components: []
+            });
+        }
     }
 };
