@@ -110,7 +110,7 @@ module.exports = {
             // Create operation role
             const operationRole = await guild.roles.create({
                 name: roleName,
-                colors: [0xFF4500],
+                color: 0xFF4500,
                 mentionable: true,
                 reason: `Operation ${operationName} role`
             });
