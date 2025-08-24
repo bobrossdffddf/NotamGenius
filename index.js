@@ -161,6 +161,32 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
     
+    // Handle dropdown selections
+    else if (interaction.isStringSelectMenu()) {
+        try {
+            // Handle job selection dropdowns
+            if (interaction.customId.startsWith('job_select_')) {
+                const operationId = interaction.customId.split('_').slice(2).join('_');
+                const command = interaction.client.commands.get('operation');
+                if (command && command.handleJobSelection) {
+                    await command.handleJobSelection(interaction, operationId);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error handling dropdown selection:', error);
+            if (!interaction.replied && !interaction.deferred) {
+                try {
+                    await interaction.reply({
+                        content: '❌ There was an error processing your selection!',
+                        flags: 64
+                    });
+                } catch (replyError) {
+                    console.error('❌ Failed to send dropdown error response:', replyError);
+                }
+            }
+        }
+    }
+    
     // Handle modal submissions for form data
     else if (interaction.isModalSubmit()) {
         try {

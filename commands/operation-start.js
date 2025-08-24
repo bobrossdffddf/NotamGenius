@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { checkAdminPermissions } = require('../utils/permissions');
 
 // Store active operations (in production, use a database)
@@ -12,6 +12,13 @@ const TARGET_ROLE_ID = '1409027687736938537';
 
 // Operation details channel ID
 const OPERATION_DETAILS_CHANNEL_ID = '1403996752314372117';
+
+// Certification role IDs
+const CERTIFICATION_ROLES = {
+    'F-22': '1409300377463165079',
+    'F-16': '1409300512062574663',
+    'F-35': '1409300434967072888'
+};
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -163,21 +170,31 @@ module.exports = {
             .setRequired(true)
             .setMaxLength(100);
 
+        // Available Jobs/Positions
+        const availableJobsInput = new TextInputBuilder()
+            .setCustomId('schedule_available_jobs')
+            .setLabel('Available Jobs/Positions')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('e.g., "F-22 Escort, F-16 CAP, AWACS Support, Ground Control"\nOne job per line or comma separated.')
+            .setRequired(true)
+            .setMaxLength(500);
+
         // Additional Notes
         const additionalNotesInput = new TextInputBuilder()
             .setCustomId('schedule_additional_notes')
             .setLabel('Additional Notes (Optional)')
-            .setStyle(TextInputStyle.Paragraph)
+            .setStyle(TextInputStyle.Short)
             .setPlaceholder('Any additional information, requirements, or special instructions...')
             .setRequired(false)
-            .setMaxLength(1000);
+            .setMaxLength(200);
 
         const row1 = new ActionRowBuilder().addComponents(operationNameInput);
-        const row3 = new ActionRowBuilder().addComponents(operationDetailsInput);
-        const row4 = new ActionRowBuilder().addComponents(operationLeaderInput);
+        const row2 = new ActionRowBuilder().addComponents(operationDetailsInput);
+        const row3 = new ActionRowBuilder().addComponents(operationLeaderInput);
+        const row4 = new ActionRowBuilder().addComponents(availableJobsInput);
         const row5 = new ActionRowBuilder().addComponents(additionalNotesInput);
 
-        modal.addComponents(row1, row3, row4, row5);
+        modal.addComponents(row1, row2, row3, row4, row5);
 
         try {
             await interaction.showModal(modal);
@@ -229,10 +246,14 @@ module.exports = {
 
             const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
             const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
+            const availableJobs = interaction.fields.getTextInputValue('schedule_available_jobs');
             const additionalNotes = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
 
             // Clean up temp data
             operationSchedules.delete(tempKey);
+
+            // Parse available jobs (support both comma-separated and line-separated)
+            const jobsList = availableJobs.split(/[,\n]/).map(job => job.trim()).filter(job => job.length > 0);
 
             // Store operation data
             const operationId = `op_${Date.now()}`;
@@ -241,8 +262,10 @@ module.exports = {
                 time: operationTime,
                 details: operationDetails,
                 leader: operationLeader,
+                availableJobs: jobsList,
                 notes: additionalNotes,
                 responses: new Map(),
+                jobAssignments: new Map(), // Track user -> job assignments
                 scheduledBy: interaction.user.id,
                 guildId: interaction.guild.id,
                 attendingCount: 0,
@@ -417,7 +440,10 @@ module.exports = {
                 discordTimestamp = `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>)`;
             }
 
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ STARTS:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            // Format available positions for display
+            const positionsText = jobsList.map((job, index) => `${index + 1}. ${job}`).join('\n');
+
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ STARTS:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **🎯 AVAILABLE POSITIONS:**\n${positionsText}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -488,6 +514,7 @@ module.exports = {
                         { name: '📅 Scheduled Time', value: operationTime, inline: true },
                         { name: '🔒 Classification', value: 'RESTRICTED', inline: true },
                         { name: '🎯 Mission Brief', value: operationDetails },
+                        { name: '🚀 Available Positions', value: positionsText || 'None specified' },
                         { name: '📝 Additional Directives', value: additionalNotes },
                         { name: '🏷️ Operation Role', value: `<@&${scheduleOperationRole.id}>`, inline: true },
                         { name: '👥 Currently Attending', value: '0', inline: true }
@@ -800,6 +827,42 @@ module.exports = {
 
         const previousResponse = operation.responses.get(interaction.user.id);
 
+        // Handle job selection for "Yes" responses
+        if (response === 'yes') {
+            // Show job selection dropdown instead of immediately giving role
+            
+            // Create job selection dropdown
+            const jobOptions = operation.availableJobs.map((job, index) => 
+                new StringSelectMenuOptionBuilder()
+                    .setLabel(job)
+                    .setValue(`job_${index}_${operationId}`)
+                    .setDescription(`Select ${job} position`)
+            );
+
+            const jobSelectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`job_select_${operationId}`)
+                .setPlaceholder('Choose your position for this operation')
+                .addOptions(jobOptions);
+
+            const jobSelectRow = new ActionRowBuilder().addComponents(jobSelectMenu);
+
+            await interaction.reply({
+                content: `✅ **Excellent!** You've confirmed your participation in **${operation.name}**.\n\nNow please select your position for this operation:`,
+                components: [jobSelectRow],
+                flags: 64
+            });
+
+            // Store preliminary response (will be updated when job is selected)
+            operation.responses.set(interaction.user.id, {
+                response: 'yes_pending_job',
+                username: interaction.user.tag,
+                timestamp: new Date()
+            });
+
+            return; // Exit early, don't send the regular response message
+        }
+
+        // Handle other responses (TBD, No)
         // Store/update user response
         operation.responses.set(interaction.user.id, {
             response: response,
@@ -807,28 +870,13 @@ module.exports = {
             timestamp: new Date()
         });
 
-        // Update attending count
-        if (response === 'yes' && (!previousResponse || previousResponse.response !== 'yes')) {
-            operation.attendingCount++;
-        } else if (response !== 'yes' && previousResponse && previousResponse.response === 'yes') {
+        // Update attending count for non-yes responses
+        if (response !== 'yes' && previousResponse && previousResponse.response === 'yes') {
             operation.attendingCount = Math.max(0, operation.attendingCount - 1);
         }
 
-        // Give operation role if they said yes
-        if (response === 'yes' && operation.operationRoleId) {
-            try {
-                const guild = await global.client.guilds.fetch(operation.guildId);
-                const member = await guild.members.fetch(interaction.user.id);
-                const operationRole = guild.roles.cache.get(operation.operationRoleId);
-                if (operationRole && !member.roles.cache.has(operation.operationRoleId)) {
-                    await member.roles.add(operationRole);
-                    console.log(`✅ Added operation role to ${member.user.tag}`);
-                }
-            } catch (error) {
-                console.error('Error adding operation role:', error);
-            }
-        } else if (response !== 'yes' && operation.operationRoleId) {
-            // Remove role if they changed from yes to no/tbd
+        // Remove role if they changed from yes to no/tbd
+        if (response !== 'yes' && operation.operationRoleId) {
             try {
                 const guild = await global.client.guilds.fetch(operation.guildId);
                 const member = await guild.members.fetch(interaction.user.id);
@@ -836,6 +884,8 @@ module.exports = {
                 if (operationRole && member.roles.cache.has(operation.operationRoleId)) {
                     await member.roles.remove(operationRole);
                 }
+                // Also remove job assignment
+                operation.jobAssignments.delete(interaction.user.id);
             } catch (error) {
                 console.error('Error removing operation role:', error);
             }
@@ -915,6 +965,160 @@ module.exports = {
         });
 
         console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}" (Attending: ${operation.attendingCount})`);
+    },
+
+    async handleJobSelection(interaction, operationId) {
+        const operation = operationSchedules.get(operationId);
+        
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Operation Expired**: This operation is no longer accepting responses.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Parse the selected job from the dropdown value
+        const selectedValue = interaction.values[0]; // job_index_operationId
+        const jobIndex = parseInt(selectedValue.split('_')[1]);
+        const selectedJob = operation.availableJobs[jobIndex];
+
+        if (!selectedJob) {
+            await interaction.reply({
+                content: '❌ **Invalid Selection**: The selected position is no longer available.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Check if user already has a different response
+        const previousResponse = operation.responses.get(interaction.user.id);
+        
+        // Update user response with job selection
+        operation.responses.set(interaction.user.id, {
+            response: 'yes',
+            job: selectedJob,
+            username: interaction.user.tag,
+            timestamp: new Date()
+        });
+
+        // Store job assignment
+        operation.jobAssignments.set(interaction.user.id, selectedJob);
+
+        // Update attending count if this is a new "yes" response
+        if (!previousResponse || previousResponse.response !== 'yes') {
+            operation.attendingCount++;
+        }
+
+        // Give operation role
+        if (operation.operationRoleId) {
+            try {
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const member = await guild.members.fetch(interaction.user.id);
+                const operationRole = guild.roles.cache.get(operation.operationRoleId);
+                
+                if (operationRole && !member.roles.cache.has(operation.operationRoleId)) {
+                    await member.roles.add(operationRole);
+                    console.log(`✅ Added operation role to ${member.user.tag} for job: ${selectedJob}`);
+                }
+
+                // Also check for certification roles and add if user has them
+                for (const [certName, roleId] of Object.entries(CERTIFICATION_ROLES)) {
+                    if (selectedJob.includes(certName) && member.roles.cache.has(roleId)) {
+                        console.log(`✅ User ${member.user.tag} has ${certName} certification for job: ${selectedJob}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error adding operation role:', error);
+            }
+        }
+
+        // Update operation briefing in info channel
+        if (operation.infoChannelId) {
+            try {
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const infoChannel = guild.channels.cache.get(operation.infoChannelId);
+                if (infoChannel) {
+                    const messages = await infoChannel.messages.fetch({ limit: 10 });
+                    const briefingMessage = messages.find(msg => msg.embeds.length > 0 && msg.embeds[0].title && msg.embeds[0].title.includes('OPERATION'));
+
+                    if (briefingMessage) {
+                        const originalEmbed = briefingMessage.embeds[0];
+                        const updatedEmbed = new EmbedBuilder()
+                            .setTitle(originalEmbed.title)
+                            .setColor(originalEmbed.color)
+                            .setTimestamp(new Date())
+                            .setFooter(originalEmbed.footer);
+
+                        // Update fields and add job assignments
+                        const fields = originalEmbed.fields.map(field => {
+                            if (field.name === '👥 Currently Attending') {
+                                return { name: field.name, value: operation.attendingCount.toString(), inline: field.inline };
+                            }
+                            return field;
+                        });
+
+                        // Add job assignments field
+                        const jobAssignmentsText = Array.from(operation.jobAssignments.entries())
+                            .map(([userId, job]) => `<@${userId}> - ${job}`)
+                            .join('\n') || 'None assigned yet';
+
+                        fields.push({ name: '🎯 Position Assignments', value: jobAssignmentsText, inline: false });
+
+                        updatedEmbed.addFields(fields);
+                        await briefingMessage.edit({ embeds: [updatedEmbed] });
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating operation briefing:', error);
+            }
+        }
+
+        // Update details message with job assignments
+        if (operation.detailsMessageId) {
+            try {
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const detailsChannel = guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+                if (detailsChannel) {
+                    const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
+                    const originalEmbed = detailsMessage.embeds[0];
+
+                    // Update the content with new attending count and job assignments
+                    let updatedContent = originalEmbed.description.replace(
+                        /\*\*👥 CURRENTLY ATTENDING:\*\* \d+/,
+                        `**👥 CURRENTLY ATTENDING:** ${operation.attendingCount}`
+                    );
+
+                    // Add job assignments section before the response required section
+                    const jobAssignmentsText = Array.from(operation.jobAssignments.entries())
+                        .map(([userId, job]) => `• <@${userId}> - ${job}`)
+                        .join('\n') || '• None assigned yet';
+
+                    const assignmentsSection = `\n### **🎯 CONFIRMED ASSIGNMENTS:**\n${jobAssignmentsText}\n`;
+                    
+                    // Insert before the personnel response section
+                    updatedContent = updatedContent.replace(
+                        '_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**',
+                        `${assignmentsSection}_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**`
+                    );
+
+                    const updatedEmbed = new EmbedBuilder()
+                        .setDescription(updatedContent)
+                        .setColor(originalEmbed.color);
+
+                    await detailsMessage.edit({ embeds: [updatedEmbed] });
+                }
+            } catch (error) {
+                console.error('Error updating details message:', error);
+            }
+        }
+
+        await interaction.reply({
+            content: `✅ **Position Confirmed!**\n\n**Operation**: ${operation.name}\n**Your Position**: ${selectedJob}\n**Currently Attending**: ${operation.attendingCount}\n\nYou have been assigned to the operation and received the operation role.`,
+            flags: 64
+        });
+
+        console.log(`🎯 Job Assignment: ${interaction.user.tag} selected "${selectedJob}" for operation "${operation.name}"`);
     },
 
     async handleConfirmationButton(interaction) {
