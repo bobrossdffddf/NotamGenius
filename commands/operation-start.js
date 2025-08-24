@@ -399,14 +399,14 @@ module.exports = {
                     // EST is UTC-5, EDT is UTC-4
                     const utcOffset = timezone === 'EST' ? -5 : -4;
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    // Convert to UTC by subtracting the offset (adding the negative offset)
-                    date.setTime(date.getTime() - (utcOffset * 60 * 60 * 1000));
+                    // Convert to UTC by adding the offset hours (EST -5 means add 5 hours to get UTC)
+                    date.setTime(date.getTime() + (Math.abs(utcOffset) * 60 * 60 * 1000));
                 } else if (timezone === 'PST' || timezone === 'PDT') {
                     // PST is UTC-8, PDT is UTC-7
                     const utcOffset = timezone === 'PST' ? -8 : -7;
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
-                    // Convert to UTC by subtracting the offset (adding the negative offset)
-                    date.setTime(date.getTime() - (utcOffset * 60 * 60 * 1000));
+                    // Convert to UTC by adding the offset hours (PST -8 means add 8 hours to get UTC)
+                    date.setTime(date.getTime() + (Math.abs(utcOffset) * 60 * 60 * 1000));
                 } else {
                     // Default to local time if timezone not recognized
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
