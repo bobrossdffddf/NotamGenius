@@ -39,52 +39,8 @@ module.exports = {
         }
 
         const status = interaction.options.getString('status');
-        const message = interaction.options.getString('message') || '';
-
-        // Status configurations
-        const statusConfig = {
-            'defcon5': { emoji: '🟢', name: 'DEFCON 5 - Exercise Term', color: 0x00FF00 },
-            'defcon4': { emoji: '🔵', name: 'DEFCON 4 - Normal Readiness', color: 0x0099FF },
-            'defcon3': { emoji: '🟡', name: 'DEFCON 3 - Increase Readiness', color: 0xFFFF00 },
-            'defcon2': { emoji: '🟠', name: 'DEFCON 2 - Next Step to Nuclear War', color: 0xFF9900 },
-            'defcon1': { emoji: '🔴', name: 'DEFCON 1 - Nuclear War Imminent', color: 0xFF0000 },
-            'clear': { emoji: '✅', name: 'All Clear', color: 0x00FF00 },
-            'training': { emoji: '⚠️', name: 'Training Exercise', color: 0xFFAA00 }
-        };
-
-        const currentStatus = statusConfig[status];
-
-        const embed = new EmbedBuilder()
-            .setTitle(`${currentStatus.emoji} OPERATIONAL BRIEFING`)
-            .setColor(currentStatus.color)
-            .addFields(
-                { name: '📊 Current Status', value: currentStatus.name, inline: true },
-                { name: '👤 Briefing Officer', value: `<@${interaction.user.id}>`, inline: true },
-                { name: '📅 Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
-            )
-            .setTimestamp();
-
-        if (message) {
-            embed.addFields({ name: '📝 Additional Information', value: message });
-        }
-
-        await interaction.reply({ embeds: [embed] });
-    }
-        ),
-
-    async execute(interaction) {
-        // Check admin permissions
-        if (!checkAdminPermissions(interaction.member)) {
-            await interaction.reply({
-                content: '❌ **Access Denied**\nOnly administrators can post operational briefings.',
-                flags: 64
-            });
-            return;
-        }
-
-        const status = interaction.options.getString('status');
         const message = interaction.options.getString('message') || 'No additional information provided.';
-        
+
         const statusInfo = {
             'defcon5': { color: 0x00FF00, title: '🟢 DEFCON 5 - Exercise Term', description: 'Lowest state of readiness' },
             'defcon4': { color: 0x0099FF, title: '🔵 DEFCON 4 - Normal Readiness', description: 'Normal peacetime readiness' },
@@ -94,9 +50,9 @@ module.exports = {
             'clear': { color: 0x00FF00, title: '✅ All Clear', description: 'Normal operations resumed' },
             'training': { color: 0x9966FF, title: '⚠️ Training Exercise', description: 'Training exercise in progress' }
         };
-        
+
         const info = statusInfo[status];
-        
+
         const embed = new EmbedBuilder()
             .setTitle(`📡 OPERATIONAL BRIEFING`)
             .setDescription(`**Current Status:** ${info.title}\n${info.description}`)
