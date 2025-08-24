@@ -76,9 +76,13 @@ async function loadOperations() {
                 // Restore Maps from objects
                 if (op.responses) {
                     op.responses = new Map(Object.entries(op.responses));
+                } else {
+                    op.responses = new Map();
                 }
                 if (op.jobAssignments) {
                     op.jobAssignments = new Map(Object.entries(op.jobAssignments));
+                } else {
+                    op.jobAssignments = new Map();
                 }
                 activeOperations.set(id, op);
             }
@@ -98,9 +102,13 @@ async function loadOperations() {
             for (const [id, op] of Object.entries(scheduledOpsData)) {
                 if (op.responses) {
                     op.responses = new Map(Object.entries(op.responses));
+                } else {
+                    op.responses = new Map();
                 }
                 if (op.jobAssignments) {
                     op.jobAssignments = new Map(Object.entries(op.jobAssignments));
+                } else {
+                    op.jobAssignments = new Map();
                 }
                 operationSchedules.set(id, op);
             }
@@ -1444,6 +1452,11 @@ module.exports = {
                 return;
             }
 
+            // Ensure jobAssignments is initialized as a Map
+            if (!operation.jobAssignments) {
+                operation.jobAssignments = new Map();
+            }
+            
             let assignmentsList = '';
             if (operation.jobAssignments.size > 0) {
                 for (const [userId, job] of operation.jobAssignments) {
