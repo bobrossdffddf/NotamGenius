@@ -1,0 +1,44 @@
+ Error creating operation: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ModalSubmitInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Object.handleModal (/home/runner/workspace/commands/operation-start.js:247:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:141:21) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409020873620455547/aW50ZXJhY3Rpb246MTQwOTAyMDg3MzYyMDQ1NTU0NzpjZ3VneWd3NFpONTVHOWIzN0pOZTd3U1d5WThtVTZacGFtNDhuMnppSkx6NjAweDZ6SnBWNVIxNXFSVjNybWdxQThTcFFoT2ZHSWRWTE51bGRmU2RWUUt0OFp6RDRRYk1ad0JtckpVNnZlUnhqR1JpSm1rQ3hQTDg3RkQxdkVZdQ/callback?with_response=false'
+}
+❌ Error handling modal submission: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ModalSubmitInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Object.handleModal (/home/runner/workspace/commands/operation-start.js:258:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:141:21) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409020873620455547/aW50ZXJhY3Rpb246MTQwOTAyMDg3MzYyMDQ1NTU0NzpjZ3VneWd3NFpONTVHOWIzN0pOZTd3U1d5WThtVTZacGFtNDhuMnppSkx6NjAweDZ6SnBWNVIxNXFSVjNybWdxQThTcFFoT2ZHSWRWTE51bGRmU2RWUUt0OFp6RDRRYk1ad0JtckpVNnZlUnhqR1JpSm1rQ3hQTDg3RkQxdkVZdQ/callback?with_response=false'
+}
+❌ Discord client error: DiscordAPIError[10062]: Unknown interaction
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ModalSubmitInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:146:13) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: { message: 'Unknown interaction', code: 10062 },
+  code: 10062,
+  status: 404,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409020873620455547/aW50ZXJhY3Rpb246MTQwOTAyMDg3MzYyMDQ1NTU0NzpjZ3VneWd3NFpONTVHOWIzN0pOZTd3U1d5WThtVTZacGFtNDhuMnppSkx6NjAweDZ6SnBWNVIxNXFSVjNybWdxQThTcFFoT2ZHSWRWTE51bGRmU2RWUUt0OFp6RDRRYk1ad0JtckpVNnZlUnhqR1JpSm1rQ3hQTDg3RkQxdkVZdQ/callback?with_response=false'
+}
