@@ -265,7 +265,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    color: 0xFF6B35,
+                    colors: [0xFF6B35],
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -413,12 +413,11 @@ module.exports = {
                 discordTimestamp = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
             }
             
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**EFFECTIVE TIME:** ${discordTimestamp}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ EFFECTIVE TIME:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operation.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
-                .setColor(0xFF6B35)
-                .setTimestamp();
+                .setColor(0xFF6B35);
 
             // Channel announcement uses same format as DM
             const channelEmbed = new EmbedBuilder()
@@ -519,26 +518,10 @@ module.exports = {
             // Post operation details to the specified channel
             const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
             if (detailsChannel) {
-                const detailsEmbed = new EmbedBuilder()
-                    .setTitle(`🚁 ${operationName.toUpperCase()}`)
-                    .setDescription('**OPERATION DETAILS**')
-                    .addFields(
-                        { name: '📅 Date & Time', value: operationTime, inline: true },
-                        { name: '👤 Leader', value: operationLeader, inline: true },
-                        { name: '👥 Attending', value: '0', inline: true },
-                        { name: '📋 Details', value: operationDetails, inline: false },
-                        { name: '📝 Notes', value: additionalNotes, inline: false }
-                    )
-                    .setColor(0xFF6B35)
-                    .setFooter({ text: `Operation ID: ${operationId}` })
-                    .setTimestamp();
-
                 try {
-                    const detailsMessage = await detailsChannel.send({ embeds: [detailsEmbed] });
+                    // Post the consolidated NOTAM to the channel
+                    const detailsMessage = await detailsChannel.send({ embeds: [channelEmbed] });
                     operationData.detailsMessageId = detailsMessage.id;
-                    
-                    // Also post the enhanced NOTAM to the channel
-                    await detailsChannel.send({ embeds: [channelEmbed] });
                 } catch (error) {
                     console.error('Error posting to details channel:', error);
                 }
@@ -601,7 +584,7 @@ module.exports = {
             // Create operation role
             const operationRole = await guild.roles.create({
                 name: roleName,
-                color: 0xFF4500,
+                colors: [0xFF4500],
                 mentionable: true,
                 reason: `Operation ${operationName} role`
             });
@@ -869,7 +852,7 @@ module.exports = {
                         const updatedEmbed = new EmbedBuilder()
                             .setTitle(originalEmbed.title)
                             .setColor(originalEmbed.color)
-                            .setTimestamp(originalEmbed.timestamp)
+                            .setTimestamp(new Date())
                             .setFooter(originalEmbed.footer);
                         
                         // Update fields, especially the attending count
@@ -896,14 +879,18 @@ module.exports = {
                 const detailsChannel = guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
                 if (detailsChannel) {
                     const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
-                    const updatedEmbed = EmbedBuilder.from(detailsMessage.embeds[0])
-                        .setFields(
-                            { name: '📅 Date & Time', value: operation.time, inline: true },
-                            { name: '👤 Leader', value: operation.leader, inline: true },
-                            { name: '👥 Attending', value: operation.attendingCount.toString(), inline: true },
-                            { name: '📋 Details', value: operation.details, inline: false },
-                            { name: '📝 Notes', value: operation.notes, inline: false }
-                        );
+                    const originalEmbed = detailsMessage.embeds[0];
+                    
+                    // Update the consolidated NOTAM content with new attending count
+                    const updatedContent = originalEmbed.description.replace(
+                        /\*\*👥 CURRENTLY ATTENDING:\*\* \d+/,
+                        `**👥 CURRENTLY ATTENDING:** ${operation.attendingCount}`
+                    );
+                    
+                    const updatedEmbed = new EmbedBuilder()
+                        .setDescription(updatedContent)
+                        .setColor(originalEmbed.color);
+                        
                     await detailsMessage.edit({ embeds: [updatedEmbed] });
                 }
             } catch (error) {

@@ -120,7 +120,7 @@ client.on(Events.InteractionCreate, async interaction => {
                     console.error('❌ Error handling NOTAM button interaction:', error);
                     await interaction.reply({ 
                         content: '❌ There was an error processing your request!', 
-                        ephemeral: true 
+                        flags: 64 
                     });
                 }
             }
