@@ -384,7 +384,7 @@ module.exports = {
             const currentDate = new Date();
             const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
             
-            // Create Discord timestamp from operation time
+            // Create Discord timestamp from operation time with proper timezone handling
             const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
             const timeMatch = operationTime.match(timeRegex);
             let discordTimestamp = '<t:1756013700:R>'; // fallback
@@ -392,11 +392,28 @@ module.exports = {
             if (timeMatch) {
                 const [, month, day, hour, minute, timezone] = timeMatch;
                 const year = new Date().getFullYear();
-                const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
+                
+                // Handle timezone conversion properly
+                let date;
+                if (timezone === 'EST' || timezone === 'EDT') {
+                    // EST is UTC-5, EDT is UTC-4
+                    const utcOffset = timezone === 'EST' ? 5 : 4;
+                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
+                    date.setUTCHours(date.getUTCHours() + utcOffset); // Convert EST/EDT to UTC
+                } else if (timezone === 'PST' || timezone === 'PDT') {
+                    // PST is UTC-8, PDT is UTC-7
+                    const utcOffset = timezone === 'PST' ? 8 : 7;
+                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
+                    date.setUTCHours(date.getUTCHours() + utcOffset); // Convert PST/PDT to UTC
+                } else {
+                    // Default to local time
+                    date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
+                }
+                
                 discordTimestamp = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
             }
             
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**EFFECTIVE TIME:** ${discordTimestamp}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n_________________________________________________\n### **MISSION BRIEF:**\n${operationDetails}\n__________________________________________________\n### **ADDITIONAL DIRECTIVES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**EFFECTIVE TIME:** ${discordTimestamp}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -837,6 +854,41 @@ module.exports = {
             }
         }
 
+        // Update briefing message in operation info channel with new attending count
+        if (operation.infoChannelId) {
+            try {
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const infoChannel = guild.channels.cache.get(operation.infoChannelId);
+                if (infoChannel) {
+                    // Find the briefing message (should be the first embed message in the channel)
+                    const messages = await infoChannel.messages.fetch({ limit: 10 });
+                    const briefingMessage = messages.find(msg => msg.embeds.length > 0 && msg.embeds[0].title && msg.embeds[0].title.includes('OPERATION'));
+                    
+                    if (briefingMessage) {
+                        const originalEmbed = briefingMessage.embeds[0];
+                        const updatedEmbed = new EmbedBuilder()
+                            .setTitle(originalEmbed.title)
+                            .setColor(originalEmbed.color)
+                            .setTimestamp(originalEmbed.timestamp)
+                            .setFooter(originalEmbed.footer);
+                        
+                        // Update fields, especially the attending count
+                        const fields = originalEmbed.fields.map(field => {
+                            if (field.name === '👥 Currently Attending') {
+                                return { name: field.name, value: operation.attendingCount.toString(), inline: field.inline };
+                            }
+                            return field;
+                        });
+                        
+                        updatedEmbed.addFields(fields);
+                        await briefingMessage.edit({ embeds: [updatedEmbed] });
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating operation briefing:', error);
+            }
+        }
+        
         // Update details message with new attending count
         if (operation.detailsMessageId) {
             try {
