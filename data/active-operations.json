@@ -42,6 +42,7 @@
     "jobAssignments": {}
   },
   "op_1756078638118": {
+    "id": "op_1756078638118",
     "name": "OPERATION SKYSHIELD ACTIVE.",
     "commander": "848356730256883744",
     "startTime": 1756078640974,
@@ -55,6 +56,26 @@
     "voiceChannelId": "1409320705295777843",
     "infoChannelId": "1409320706185101483",
     "chatChannelId": "1409320707350986934",
+    "guildId": "1403618918928613517",
+    "active": false,
+    "scheduled": true,
+    "responses": {},
+    "jobAssignments": {}
+  },
+  "op_1756079135525": {
+    "name": "e",
+    "commander": "848356730256883744",
+    "startTime": 1756079138387,
+    "endTime": null,
+    "duration": null,
+    "objective": "e",
+    "classification": "RESTRICTED",
+    "notes": "e",
+    "roleId": "1409322783955226716",
+    "categoryId": "1409322785125306425",
+    "voiceChannelId": "1409322789470605465",
+    "infoChannelId": "1409322791102189620",
+    "chatChannelId": "1409322792599420979",
     "guildId": "1403618918928613517",
     "active": true,
     "scheduled": true
