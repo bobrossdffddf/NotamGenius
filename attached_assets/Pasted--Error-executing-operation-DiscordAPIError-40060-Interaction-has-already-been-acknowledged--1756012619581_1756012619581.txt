@@ -1,0 +1,82 @@
+❌ Error executing operation: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.showModal (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:406:22)
+    at async Object.handleOperationSchedule (/home/runner/workspace/commands/operation-start.js:182:9)
+    at async Object.execute (/home/runner/workspace/commands/operation-start.js:53:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:93:13) {
+  requestBody: { files: undefined, json: { type: 9, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409043509893267536/aW50ZXJhY3Rpb246MTQwOTA0MzUwOTg5MzI2NzUzNjpXdlVlRFFEZ1ZpUFBjYjFqSG5IbkQ4Sk9udVhiZW1sd2xpaWhYaTNFMTh6UlA2WTBCTEQ1cVlXY1ZVNnFuQmFOZE9sN0lVcDgyd3VkaWJpUXpZY2JuV2NzcDN2SzdRZDRlWVFsRU11b3Vrazd4cUNDNWxyNE1KWjBRTHRXREF3eg/callback?with_response=false'
+}
+(node:767) Warning: Supplying "ephemeral" for interaction response options is deprecated. Utilize flags instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+❌ Discord client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ChatInputCommandInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:105:17) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409043509893267536/aW50ZXJhY3Rpb246MTQwOTA0MzUwOTg5MzI2NzUzNjpXdlVlRFFEZ1ZpUFBjYjFqSG5IbkQ4Sk9udVhiZW1sd2xpaWhYaTNFMTh6UlA2WTBCTEQ1cVlXY1ZVNnFuQmFOZE9sN0lVcDgyd3VkaWJpUXpZY2JuV2NzcDN2SzdRZDRlWVFsRU11b3Vrazd4cUNDNWxyNE1KWjBRTHRXREF3eg/callback?with_response=false'
+}
+Error processing operation schedule modal: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ModalSubmitInteraction.deferReply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:129:22)
+    at async Object.handleOperationScheduleModal (/home/runner/workspace/commands/operation-start.js:196:13)
+    at async Object.handleModal (/home/runner/workspace/commands/operation-start.js:189:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:158:21) {
+  requestBody: { files: undefined, json: { type: 5, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409043556664082432/aW50ZXJhY3Rpb246MTQwOTA0MzU1NjY2NDA4MjQzMjo2RnFXM24yNUdtV0xlTElGWlA1aGxacElHZE82aXFwNjBQWkVTb0NTeE1xVEJNdnpsWXVlRDFpTTBTVG9vSE9GN0NvcUZnMnRKamNQemIxQzhTckt2OHNxYkdrdUU4S2hmWmcwZ3VPOVhTSDlwalZJYjdOR2RvcVdMeWgxWkp6bg/callback?with_response=false'
+}
+❌ Error handling modal submission: Error [InteractionNotReplied]: The reply to this interaction has not been sent or deferred.
+    at ModalSubmitInteraction.editReply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:253:48)
+    at Object.handleOperationScheduleModal (/home/runner/workspace/commands/operation-start.js:396:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.handleModal (/home/runner/workspace/commands/operation-start.js:189:13)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:158:21) {
+  code: 'InteractionNotReplied'
+}
+❌ Discord client error: DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:866:23)
+    at async _REST.request (/home/runner/workspace/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async ModalSubmitInteraction.reply (/home/runner/workspace/node_modules/discord.js/src/structures/interfaces/InteractionResponses.js:200:22)
+    at async Client.<anonymous> (/home/runner/workspace/index.js:163:13) {
+  requestBody: { files: [], json: { type: 4, data: [Object] } },
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1409043556664082432/aW50ZXJhY3Rpb246MTQwOTA0MzU1NjY2NDA4MjQzMjo2RnFXM24yNUdtV0xlTElGWlA1aGxacElHZE82aXFwNjBQWkVTb0NTeE1xVEJNdnpsWXVlRDFpTTBTVG9vSE9GN0NvcUZnMnRKamNQemIxQzhTckt2OHNxYkdrdUU4S2hmWmcwZ3VPOVhTSDlwalZJYjdOR2RvcVdMeWgxWkp6bg/callback?with_response=false'
+}

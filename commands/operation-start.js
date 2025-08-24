@@ -254,18 +254,34 @@ module.exports = {
                 return;
             }
 
-            // Simple operation notification for DMs
-            const operationEmbed = new EmbedBuilder()
-                .setTitle(`🚁 Operation: ${operationName}`)
-                .setDescription(`**Time:** ${operationTime}\n**Leader:** ${operationLeader}\n\n**Details:**\n${operationDetails}\n\n**Notes:**\n${additionalNotes}\n\n**Please respond using the buttons below:**`)
-                .setColor(0xFF6B35)
-                .setFooter({ text: `Operation ID: ${operationId}` })
-                .setTimestamp();
-
-            // Enhanced channel announcement
+            // Enhanced NOTAM-style DM notification
             const currentDate = new Date();
             const notamNumber = `${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}-${operationId.split('_')[1].slice(-4)}`;
             
+            const dmNotamContent = `🚁 **NOTICE TO AIRMEN (NOTAM) - URGENT**\n` +
+                `**NOTAM NUMBER:** ${notamNumber}\n` +
+                `**CLASSIFICATION:** FOR OFFICIAL USE ONLY\n` +
+                `**ISSUED:** ${currentDate.toISOString().replace('T', ' ').substring(0, 19)}Z\n\n` +
+                `⚠️ **OPERATIONAL ALERT - IMMEDIATE RESPONSE REQUIRED** ⚠️\n\n` +
+                `**OPERATION DESIGNATION:** ${operationName.toUpperCase()}\n` +
+                `**EFFECTIVE DATE/TIME:** ${operationTime}\n` +
+                `**OPERATION COMMANDER:** ${operationLeader}\n` +
+                `**STATUS:** PERSONNEL MOBILIZATION REQUIRED\n\n` +
+                `**= MISSION BRIEFING =**\n${operationDetails}\n\n` +
+                `**= ADDITIONAL OPERATIONAL DIRECTIVES =**\n${additionalNotes}\n\n` +
+                `**🚨 IMMEDIATE ACTION REQUIRED 🚨**\n` +
+                `CONFIRM YOUR OPERATIONAL AVAILABILITY\n` +
+                `RESPONSE DEADLINE: 30 MINUTES FROM RECEIPT\n\n` +
+                `**Use the buttons below to respond:**`;
+
+            const operationEmbed = new EmbedBuilder()
+                .setTitle('🚨 **DEPARTMENT OF DEFENSE - EMERGENCY ALERT**')
+                .setDescription(dmNotamContent)
+                .setColor(0xCC0000)
+                .setFooter({ text: `CLASSIFIED FOUO | RESPOND WITHIN 30 MINUTES | ${notamNumber}` })
+                .setTimestamp();
+
+            // Enhanced channel announcement (reuse currentDate and notamNumber from above)
             const channelNotamContent = `🚁 **NOTICE TO AIRMEN (NOTAM)**\n` +
                 `**NOTAM NUMBER:** ${notamNumber}\n` +
                 `**CLASSIFICATION:** FOR OFFICIAL USE ONLY\n` +
@@ -768,7 +784,7 @@ module.exports = {
             for (const [memberId, member] of membersWithRole) {
                 try {
                     await member.send({
-                        content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
+                        content: `**🚨 URGENT - DEPARTMENT OF DEFENSE ALERT**\n**FROM: ${interaction.guild.name} COMMAND**\n**SECURITY CLASSIFICATION: FOR OFFICIAL USE ONLY**\n\n⚠️ **IMMEDIATE RESPONSE REQUIRED** ⚠️`,
                         embeds: [operationEmbed],
                         components: [responseRow]
                     });

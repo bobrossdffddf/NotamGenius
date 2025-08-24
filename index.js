@@ -94,15 +94,16 @@ client.on(Events.InteractionCreate, async interaction => {
         } catch (error) {
             console.error(`❌ Error executing ${interaction.commandName}:`, error);
             
-            const errorMessage = {
-                content: '❌ There was an error while executing this command!',
-                ephemeral: true
-            };
-            
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(errorMessage);
-            } else {
-                await interaction.reply(errorMessage);
+            // Only try to reply if the interaction hasn't been handled yet
+            if (!interaction.replied && !interaction.deferred) {
+                try {
+                    await interaction.reply({
+                        content: '❌ There was an error while executing this command!',
+                        flags: 64
+                    });
+                } catch (replyError) {
+                    console.error('❌ Failed to send error response:', replyError);
+                }
             }
         }
     }
@@ -132,10 +133,29 @@ client.on(Events.InteractionCreate, async interaction => {
                     await command.handleButton(interaction);
                 } catch (error) {
                     console.error('❌ Error handling operation button interaction:', error);
-                    await interaction.reply({ 
-                        content: '❌ There was an error processing your operation response!', 
-                        ephemeral: true 
-                    });
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({ 
+                            content: '❌ There was an error processing your operation response!', 
+                            flags: 64 
+                        });
+                    }
+                }
+            }
+        }
+        // Handle operation confirmation buttons (Send to All, Cancel)
+        else if (interaction.customId.startsWith('confirm_send_') || interaction.customId.startsWith('cancel_send_')) {
+            const command = interaction.client.commands.get('operation');
+            if (command && command.handleConfirmationButton) {
+                try {
+                    await command.handleConfirmationButton(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling operation confirmation button:', error);
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({ 
+                            content: '❌ There was an error processing your request!', 
+                            flags: 64 
+                        });
+                    }
                 }
             }
         }
@@ -160,10 +180,16 @@ client.on(Events.InteractionCreate, async interaction => {
             }
         } catch (error) {
             console.error('❌ Error handling modal submission:', error);
-            await interaction.reply({ 
-                content: '❌ There was an error processing your form submission!', 
-                flags: 64 
-            });
+            if (!interaction.replied && !interaction.deferred) {
+                try {
+                    await interaction.reply({ 
+                        content: '❌ There was an error processing your form submission!', 
+                        flags: 64 
+                    });
+                } catch (replyError) {
+                    console.error('❌ Failed to send modal error response:', replyError);
+                }
+            }
         }
     }
 });
