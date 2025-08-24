@@ -10,6 +10,9 @@ const operationSchedules = new Map();
 // Target role ID for operation notifications
 const TARGET_ROLE_ID = '1409027687736938537';
 
+// Operation details channel ID
+const OPERATION_DETAILS_CHANNEL_ID = '1403996752314372117';
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('operation')
@@ -112,14 +115,14 @@ module.exports = {
             .setRequired(true)
             .setMaxLength(100);
 
-        // Operation Date & Time
+        // Operation Date & Time (simplified)
         const operationTimeInput = new TextInputBuilder()
             .setCustomId('schedule_operation_time')
             .setLabel('Operation Date & Time')
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder('e.g., "December 15, 2024 - 1400Z"')
+            .setPlaceholder('e.g., "Dec 15 2PM EST" or "Tomorrow 6PM"')
             .setRequired(true)
-            .setMaxLength(200);
+            .setMaxLength(100);
 
         // Operation Details
         const operationDetailsInput = new TextInputBuilder()
@@ -186,7 +189,10 @@ module.exports = {
                 notes: additionalNotes,
                 responses: new Map(),
                 scheduledBy: interaction.user.id,
-                guildId: interaction.guild.id
+                guildId: interaction.guild.id,
+                attendingCount: 0,
+                operationRoleId: null,
+                detailsMessageId: null
             });
 
             // Find target role
@@ -261,6 +267,46 @@ module.exports = {
                 }
             }
 
+            // Create operation role
+            const operationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
+            let operationRole;
+            try {
+                operationRole = await interaction.guild.roles.create({
+                    name: operationRoleName,
+                    color: 0xFF6B35,
+                    mentionable: true,
+                    reason: `Operation ${operationName} participant role`
+                });
+                operation.operationRoleId = operationRole.id;
+            } catch (error) {
+                console.error('Error creating operation role:', error);
+            }
+
+            // Post operation details to the specified channel
+            const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+            if (detailsChannel) {
+                const detailsEmbed = new EmbedBuilder()
+                    .setTitle(`🚁 ${operationName.toUpperCase()}`)
+                    .setDescription('**OPERATION DETAILS**')
+                    .addFields(
+                        { name: '📅 Date & Time', value: operationTime, inline: true },
+                        { name: '👤 Leader', value: operationLeader, inline: true },
+                        { name: '👥 Attending', value: '0', inline: true },
+                        { name: '📋 Details', value: operationDetails, inline: false },
+                        { name: '📝 Notes', value: additionalNotes, inline: false }
+                    )
+                    .setColor(0xFF6B35)
+                    .setFooter({ text: `Operation ID: ${operationId}` })
+                    .setTimestamp();
+
+                try {
+                    const detailsMessage = await detailsChannel.send({ embeds: [detailsEmbed] });
+                    operation.detailsMessageId = detailsMessage.id;
+                } catch (error) {
+                    console.error('Error posting to details channel:', error);
+                }
+            }
+
             // Send confirmation to admin
             const confirmEmbed = new EmbedBuilder()
                 .setTitle('✅ **Operation Scheduled Successfully**')
@@ -268,7 +314,8 @@ module.exports = {
                 .addFields(
                     { name: '📊 **Delivery Stats**', value: `✅ Sent: ${successCount}\n❌ Failed: ${failCount}\n👥 Total: ${membersWithRole.size}`, inline: true },
                     { name: '🎯 **Target Role**', value: targetRole.name, inline: true },
-                    { name: '🆔 **Operation ID**', value: operationId, inline: true }
+                    { name: '🆔 **Operation ID**', value: operationId, inline: true },
+                    { name: '🏷️ **Operation Role**', value: operationRole ? `<@&${operationRole.id}>` : 'Failed to create', inline: true }
                 )
                 .setColor(0x00FF00)
                 .setTimestamp();
@@ -519,6 +566,8 @@ module.exports = {
             return;
         }
 
+        const previousResponse = operation.responses.get(interaction.user.id);
+        
         // Store/update user response
         operation.responses.set(interaction.user.id, {
             response: response,
@@ -526,18 +575,70 @@ module.exports = {
             timestamp: new Date()
         });
 
+        // Update attending count
+        if (response === 'yes' && (!previousResponse || previousResponse.response !== 'yes')) {
+            operation.attendingCount++;
+        } else if (response !== 'yes' && previousResponse && previousResponse.response === 'yes') {
+            operation.attendingCount = Math.max(0, operation.attendingCount - 1);
+        }
+
+        // Give operation role if they said yes
+        if (response === 'yes' && operation.operationRoleId) {
+            try {
+                const member = await interaction.guild.members.fetch(interaction.user.id);
+                const operationRole = interaction.guild.roles.cache.get(operation.operationRoleId);
+                if (operationRole && !member.roles.cache.has(operation.operationRoleId)) {
+                    await member.roles.add(operationRole);
+                }
+            } catch (error) {
+                console.error('Error adding operation role:', error);
+            }
+        } else if (response !== 'yes' && operation.operationRoleId) {
+            // Remove role if they changed from yes to no/tbd
+            try {
+                const member = await interaction.guild.members.fetch(interaction.user.id);
+                const operationRole = interaction.guild.roles.cache.get(operation.operationRoleId);
+                if (operationRole && member.roles.cache.has(operation.operationRoleId)) {
+                    await member.roles.remove(operationRole);
+                }
+            } catch (error) {
+                console.error('Error removing operation role:', error);
+            }
+        }
+
+        // Update details message with new attending count
+        if (operation.detailsMessageId) {
+            try {
+                const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+                if (detailsChannel) {
+                    const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
+                    const updatedEmbed = EmbedBuilder.from(detailsMessage.embeds[0])
+                        .setFields(
+                            { name: '📅 Date & Time', value: operation.time, inline: true },
+                            { name: '👤 Leader', value: operation.leader, inline: true },
+                            { name: '👥 Attending', value: operation.attendingCount.toString(), inline: true },
+                            { name: '📋 Details', value: operation.details, inline: false },
+                            { name: '📝 Notes', value: operation.notes, inline: false }
+                        );
+                    await detailsMessage.edit({ embeds: [updatedEmbed] });
+                }
+            } catch (error) {
+                console.error('Error updating details message:', error);
+            }
+        }
+
         // Response messages
         const responseMessages = {
-            'yes': '✅ **Confirmed!** You have confirmed your participation in the operation.',
+            'yes': `✅ **Confirmed!** You have confirmed your participation and received the operation role.`,
             'tbd': '❔ **Noted!** You have marked your availability as "To Be Determined".',
             'no': '❌ **Understood!** You have declined participation in this operation.'
         };
 
         await interaction.reply({
-            content: responseMessages[response] + `\n\n**Operation**: ${operation.name}\n**Time**: ${operation.time}`,
+            content: responseMessages[response] + `\n\n**Operation**: ${operation.name}\n**Time**: ${operation.time}\n**Currently Attending**: ${operation.attendingCount}`,
             ephemeral: true
         });
 
-        console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}"`);
+        console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}" (Attending: ${operation.attendingCount})`);
     }
 };
