@@ -3,7 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js')
 // Configuration for certification types and channels
 const config = {
     privateChannelId: '1408965201210114069',
-    traineeRoleId: 'TRAINEE_ROLE_ID_NEEDED', // You'll need to provide this
+    traineeRoleId: '1408854677784887449',
     certificationRoles: {
         'atc': {
             name: 'ATC Certified',
