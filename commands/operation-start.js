@@ -254,11 +254,19 @@ module.exports = {
                 return;
             }
 
-            // Create enhanced NOTAM-style operation notification
+            // Simple operation notification for DMs
+            const operationEmbed = new EmbedBuilder()
+                .setTitle(`🚁 Operation: ${operationName}`)
+                .setDescription(`**Time:** ${operationTime}\n**Leader:** ${operationLeader}\n\n**Details:**\n${operationDetails}\n\n**Notes:**\n${additionalNotes}\n\n**Please respond using the buttons below:**`)
+                .setColor(0xFF6B35)
+                .setFooter({ text: `Operation ID: ${operationId}` })
+                .setTimestamp();
+
+            // Enhanced channel announcement
             const currentDate = new Date();
             const notamNumber = `${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}-${operationId.split('_')[1].slice(-4)}`;
             
-            const notamContent = `🚁 **NOTICE TO AIRMEN (NOTAM)**\n` +
+            const channelNotamContent = `🚁 **NOTICE TO AIRMEN (NOTAM)**\n` +
                 `**NOTAM NUMBER:** ${notamNumber}\n` +
                 `**CLASSIFICATION:** FOR OFFICIAL USE ONLY\n` +
                 `**ISSUED:** ${currentDate.toISOString().replace('T', ' ').substring(0, 19)}Z\n\n` +
@@ -271,15 +279,14 @@ module.exports = {
                 `**= ADDITIONAL OPERATIONAL DIRECTIVES =**\n${additionalNotes}\n\n` +
                 `**🚨 IMMEDIATE ACTION REQUIRED 🚨**\n` +
                 `ALL PERSONNEL MUST CONFIRM OPERATIONAL AVAILABILITY\n` +
-                `RESPONSE DEADLINE: 30 MINUTES FROM RECEIPT\n` +
-                `USE RESPONSE BUTTONS BELOW - NO EMAIL RESPONSES\n\n` +
+                `RESPONSE DEADLINE: 30 MINUTES FROM RECEIPT\n\n` +
                 `**AUTHORITY:** DoD EMERGENCY ALERT SYSTEM\n` +
                 `**ISSUED BY:** ${interaction.user.tag}\n` +
                 `**REF:** Operation ${operationId}`;
 
-            const operationEmbed = new EmbedBuilder()
+            const channelEmbed = new EmbedBuilder()
                 .setTitle('🚨 **DEPARTMENT OF DEFENSE - EMERGENCY ALERT**')
-                .setDescription(notamContent)
+                .setDescription(channelNotamContent)
                 .setColor(0xCC0000)
                 .setFooter({ text: `CLASSIFIED FOUO | RESPOND WITHIN 30 MINUTES | ${notamNumber}` })
                 .setTimestamp();
@@ -320,7 +327,7 @@ module.exports = {
                 );
 
             await interaction.editReply({
-                content: `**📝 PREVIEW - Operation: ${operationName}**`,
+                content: `**📝 PREVIEW - Operation: ${operationName}**\n**DM Preview:** (Simple format for users)`,
                 embeds: [previewEmbed, operationEmbed],
                 components: [confirmButtons]
             });
@@ -330,6 +337,7 @@ module.exports = {
             operationData.targetRole = targetRole;
             operationData.responseRow = responseRow;
             operationData.operationEmbed = operationEmbed;
+            operationData.channelEmbed = channelEmbed;
             operationSchedules.set(operationId, operationData);
 
             // Create operation role
@@ -366,7 +374,10 @@ module.exports = {
 
                 try {
                     const detailsMessage = await detailsChannel.send({ embeds: [detailsEmbed] });
-                        operationData.detailsMessageId = detailsMessage.id;
+                    operationData.detailsMessageId = detailsMessage.id;
+                    
+                    // Also post the enhanced NOTAM to the channel
+                    await detailsChannel.send({ embeds: [channelEmbed] });
                 } catch (error) {
                     console.error('Error posting to details channel:', error);
                 }
