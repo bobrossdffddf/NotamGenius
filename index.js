@@ -40,10 +40,19 @@ client.once(Events.ClientReady, async readyClient => {
     
     // Register slash commands globally
     try {
-        console.log('🔄 Registering slash commands...');
+        console.log('🗑️ Clearing existing commands...');
         
         const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
         
+        // Clear existing commands
+        await rest.put(
+            Routes.applicationCommands(readyClient.user.id),
+            { body: [] }
+        );
+        
+        console.log('🔄 Registering new slash commands...');
+        
+        // Register new commands
         const data = await rest.put(
             Routes.applicationCommands(readyClient.user.id),
             { body: commandsArray }
