@@ -764,5 +764,261 @@
       "color": 16739125,
       "timestamp": "2025-08-24T23:51:56.854Z"
     }
+  },
+  "op_1756079686096": {
+    "name": "T",
+    "time": "8/24 at 19:50 EST",
+    "details": "T",
+    "leader": "T",
+    "availableJobs": [
+      {
+        "name": "T",
+        "maxCount": null
+      }
+    ],
+    "notes": "T",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": "1409325093024305284",
+    "detailsMessageId": "1409325106093625478",
+    "categoryId": "1409325094420873266",
+    "voiceChannelId": "1409325098317648003",
+    "infoChannelId": "1409325100444028959",
+    "chatChannelId": "1409325102927052911",
+    "membersWithRole": [
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1754755988874,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "848356730256883744",
+        "avatar": null,
+        "banner": null,
+        "flags": 6,
+        "avatarDecorationData": null,
+        "displayName": "Wacko",
+        "roles": [
+          "1403914774269395036",
+          "1409027687736938537",
+          "1407780166754766910",
+          "1408854677784887449",
+          "1403914572674633890",
+          "1408995373455904789",
+          "1408995322021154846",
+          "1408942834060361740",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/848356730256883744/10f1a4dc78b6acc67a2e1e8e3d2a2698.webp",
+        "displayBannerURL": null,
+        "avatarDecorationURL": null
+      }
+    ],
+    "targetRole": {
+      "guild": "1403618918928613517",
+      "icon": null,
+      "unicodeEmoji": null,
+      "id": "1409027687736938537",
+      "name": "Test role",
+      "color": 0,
+      "colors": {
+        "primaryColor": 0,
+        "secondaryColor": null,
+        "tertiaryColor": null
+      },
+      "hoist": false,
+      "rawPosition": 1,
+      "permissions": "0",
+      "managed": false,
+      "mentionable": false,
+      "flags": 0,
+      "tags": {},
+      "createdTimestamp": 1756008779225
+    },
+    "responseRow": {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "custom_id": "op_response_yes_op_1756079686096",
+          "label": "✅ Yes, I'll Join",
+          "style": 3
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_tbd_op_1756079686096",
+          "label": "❔ To Be Determined",
+          "style": 2
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_no_op_1756079686096",
+          "label": "❌ No Thank You",
+          "style": 4
+        }
+      ]
+    },
+    "operationEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: T**\n**📅 DATE & TIME:** 8/24 at 19:50 EST\n**🕐 STARTS:** <t:1756083000:F> (<t:1756083000:R>)\n**👨‍✈️ OPERATION COMMANDER:** T\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\nT\n\n### **📍 POSITIONS:**\n1. T (unlimited)\n\n### **📝 ADDITIONAL NOTES:**\nT\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756079686096\n**📤 ISSUED BY:** justawacko_ | 2025-08-24 23:54:48Z",
+      "color": 16739125
+    },
+    "channelEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: T**\n**📅 DATE & TIME:** 8/24 at 19:50 EST\n**🕐 STARTS:** <t:1756083000:F> (<t:1756083000:R>)\n**👨‍✈️ OPERATION COMMANDER:** T\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\nT\n\n### **📍 POSITIONS:**\n1. T (unlimited)\n\n### **📝 ADDITIONAL NOTES:**\nT\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756079686096\n**📤 ISSUED BY:** justawacko_ | 2025-08-24 23:54:48Z",
+      "color": 16739125,
+      "timestamp": "2025-08-24T23:54:48.955Z"
+    }
+  },
+  "op_1756079847372": {
+    "name": "Universe Sightsee",
+    "time": "08/25 at 0940 EST",
+    "details": "Transport government officials such as POTUS, VPOTUS, SecDef, Government senators / congressmen, SPACE-A Travel citizens, etc.",
+    "leader": "Dmitrybohonak25 (db25)",
+    "availableJobs": [
+      {
+        "name": "Ground Control",
+        "maxCount": null
+      },
+      {
+        "name": "F-16",
+        "maxCount": 2
+      }
+    ],
+    "notes": "Testing out the bot with this. This is a pop up / less than 24 hour notice of operation so we will NOT mandate certification. Please show up if you can.",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "1229209804057346091",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": "1409325769183858831",
+    "detailsMessageId": null,
+    "categoryId": "1409325770815311913",
+    "voiceChannelId": "1409325776091877397",
+    "infoChannelId": "1409325778054811818",
+    "chatChannelId": "1409325779871076364",
+    "membersWithRole": [
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1754755988874,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "848356730256883744",
+        "avatar": null,
+        "banner": null,
+        "flags": 6,
+        "avatarDecorationData": null,
+        "displayName": "Wacko",
+        "roles": [
+          "1403914774269395036",
+          "1409027687736938537",
+          "1407780166754766910",
+          "1408854677784887449",
+          "1403914572674633890",
+          "1408995373455904789",
+          "1408995322021154846",
+          "1408942834060361740",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/848356730256883744/10f1a4dc78b6acc67a2e1e8e3d2a2698.webp",
+        "displayBannerURL": null,
+        "avatarDecorationURL": null
+      },
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1754719228354,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "1229209804057346091",
+        "avatar": null,
+        "banner": null,
+        "flags": 0,
+        "avatarDecorationData": null,
+        "displayName": "db25",
+        "roles": [
+          "1408854630816813167",
+          "1403914774269395036",
+          "1409027687736938537",
+          "1407780166754766910",
+          "1403918629518577785",
+          "1408995373455904789",
+          "1408995322021154846",
+          "1403915087692959815",
+          "1403619143667679252",
+          "1407780130654523503",
+          "1408942834060361740",
+          "1408943018991423571",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/embed/avatars/1.png",
+        "displayBannerURL": null,
+        "avatarDecorationURL": null
+      }
+    ],
+    "targetRole": {
+      "guild": "1403618918928613517",
+      "icon": null,
+      "unicodeEmoji": null,
+      "id": "1409027687736938537",
+      "name": "Test role",
+      "color": 0,
+      "colors": {
+        "primaryColor": 0,
+        "secondaryColor": null,
+        "tertiaryColor": null
+      },
+      "hoist": false,
+      "rawPosition": 1,
+      "permissions": "0",
+      "managed": false,
+      "mentionable": false,
+      "flags": 0,
+      "tags": {},
+      "createdTimestamp": 1756008779225
+    },
+    "responseRow": {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "custom_id": "op_response_yes_op_1756079847372",
+          "label": "✅ Yes, I'll Join",
+          "style": 3
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_tbd_op_1756079847372",
+          "label": "❔ To Be Determined",
+          "style": 2
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_no_op_1756079847372",
+          "label": "❌ No Thank You",
+          "style": 4
+        }
+      ]
+    },
+    "operationEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: UNIVERSE SIGHTSEE**\n**📅 DATE & TIME:** 08/25 at 0940 EST\n**🕐 STARTS:** <t:1756013700:R>\n**👨‍✈️ OPERATION COMMANDER:** Dmitrybohonak25 (db25)\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\nTransport government officials such as POTUS, VPOTUS, SecDef, Government senators / congressmen, SPACE-A Travel citizens, etc.\n\n### **📍 POSITIONS:**\n1. Ground Control (unlimited)\n2. F-16 (2 slots)\n\n### **📝 ADDITIONAL NOTES:**\nTesting out the bot with this. This is a pop up / less than 24 hour notice of operation so we will NOT mandate certification. Please show up if you can.\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756079847372\n**📤 ISSUED BY:** alexbillyjoil | 2025-08-24 23:57:30Z",
+      "color": 16739125
+    },
+    "channelEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: UNIVERSE SIGHTSEE**\n**📅 DATE & TIME:** 08/25 at 0940 EST\n**🕐 STARTS:** <t:1756013700:R>\n**👨‍✈️ OPERATION COMMANDER:** Dmitrybohonak25 (db25)\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\nTransport government officials such as POTUS, VPOTUS, SecDef, Government senators / congressmen, SPACE-A Travel citizens, etc.\n\n### **📍 POSITIONS:**\n1. Ground Control (unlimited)\n2. F-16 (2 slots)\n\n### **📝 ADDITIONAL NOTES:**\nTesting out the bot with this. This is a pop up / less than 24 hour notice of operation so we will NOT mandate certification. Please show up if you can.\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756079847372\n**📤 ISSUED BY:** alexbillyjoil | 2025-08-24 23:57:30Z",
+      "color": 16739125,
+      "timestamp": "2025-08-24T23:57:30.160Z"
+    }
   }
 }

@@ -1,10 +1,14 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder } = require('discord.js');
 const { checkAdminPermissions } = require('../utils/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('operation-stop')
-        .setDescription('Stop the active operation (Admin only)'),
+        .setDescription('Stop an active operation (Admin only)')
+        .addStringOption(option =>
+            option.setName('operation_id')
+                .setDescription('Operation ID to stop (leave empty to select from list)')
+                .setRequired(false)),
 
     async execute(interaction) {
         // Defer reply immediately to prevent timeout
@@ -17,44 +21,109 @@ module.exports = {
             return;
         }
 
-        // Get active operation for this guild
         const operationStart = require('./operation-start');
         const activeOperations = operationStart.getActiveOperations();
-        const activeOperation = operationStart.getActiveOperation(interaction.guild.id);
+        const operationIdInput = interaction.options.getString('operation_id');
 
-        if (!activeOperation) {
+        // If specific operation ID provided, stop that one
+        if (operationIdInput) {
+            const operation = activeOperations.get(operationIdInput);
+            if (!operation) {
+                await interaction.editReply({
+                    content: `❌ No operation found with ID: \`${operationIdInput}\``
+                });
+                return;
+            }
+            
+            await this.stopOperation(interaction, operationIdInput, operation);
+            return;
+        }
+
+        // Otherwise, show list of active operations for this guild
+        const guildOperations = new Map();
+        for (const [id, op] of activeOperations) {
+            if (op.guildId === interaction.guild.id && op.active) {
+                guildOperations.set(id, op);
+            }
+        }
+
+        if (guildOperations.size === 0) {
             await interaction.editReply({
-                content: '❌ No active operation found in this server.'
+                content: '❌ No active operations found in this server.'
             });
             return;
         }
 
+        // Create selection menu
+        const options = [];
+        for (const [id, op] of guildOperations) {
+            options.push(new StringSelectMenuOptionBuilder()
+                .setLabel(`${op.name}`)
+                .setValue(id)
+                .setDescription(`Started: ${new Date(op.startTime).toLocaleDateString()} | Leader: ${op.leader}`)
+                .setEmoji('🛑')
+            );
+        }
+
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('select_operation_stop')
+            .setPlaceholder('Select operation to stop')
+            .addOptions(options);
+
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+
+        await interaction.editReply({
+            content: '🛑 **Select Operation to Stop:**\n\nChoose which operation you want to terminate:',
+            components: [row]
+        });
+    },
+
+    async handleOperationStopSelection(interaction) {
+        const operationId = interaction.values[0];
+        const operationStart = require('./operation-start');
+        const activeOperations = operationStart.getActiveOperations();
+        const operation = activeOperations.get(operationId);
+
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Error**: Operation not found.',
+                flags: 64
+            });
+            return;
+        }
+
+        await this.stopOperation(interaction, operationId, operation);
+    },
+
+    async stopOperation(interaction, operationId, operation) {
         try {
             const guild = interaction.guild;
+            const operationStart = require('./operation-start');
+            const activeOperations = operationStart.getActiveOperations();
 
             // Get all operation components
-            const operationRole = guild.roles.cache.get(activeOperation.roleId);
-            const category = guild.channels.cache.get(activeOperation.categoryId);
-            const voiceChannel = guild.channels.cache.get(activeOperation.voiceChannelId);
-            const infoChannel = guild.channels.cache.get(activeOperation.infoChannelId);
-            const chatChannel = guild.channels.cache.get(activeOperation.chatChannelId);
+            const operationRole = guild.roles.cache.get(operation.roleId);
+            const category = guild.channels.cache.get(operation.categoryId);
+            const voiceChannel = guild.channels.cache.get(operation.voiceChannelId);
+            const infoChannel = guild.channels.cache.get(operation.infoChannelId);
+            const chatChannel = guild.channels.cache.get(operation.chatChannelId);
 
             // Create final operation report
-            const duration = Math.floor((Date.now() - activeOperation.startTime) / (1000 * 60 * 60 * 100)) / 10;
+            const duration = Math.floor((Date.now() - operation.startTime) / (1000 * 60 * 60)) / 10;
             const reportEmbed = new EmbedBuilder()
-                .setTitle(`🏁 OPERATION ${activeOperation.name.toUpperCase()} - CONCLUDED`)
+                .setTitle(`🏁 OPERATION ${operation.name.toUpperCase()} - CONCLUDED`)
                 .setColor(0x00FF00)
                 .addFields(
-                    { name: '👤 Operation Commander', value: `<@${activeOperation.commander}>`, inline: true },
+                    { name: '👤 Operation Leader', value: operation.leader || 'Unknown', inline: true },
                     { name: '⏱️ Actual Duration', value: `${duration} hours`, inline: true },
-                    { name: '📅 Start Time', value: `<t:${Math.floor(activeOperation.startTime / 1000)}:F>`, inline: true },
+                    { name: '📅 Start Time', value: `<t:${Math.floor(operation.startTime / 1000)}:F>`, inline: true },
                     { name: '🏁 End Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true },
-                    { name: '🎯 Objective', value: activeOperation.objective },
+                    { name: '🎯 Details', value: operation.details || 'No details provided' },
                     { name: '👥 Personnel Count', value: operationRole ? `${operationRole.members.size} assigned` : 'Unknown', inline: true },
                     { name: '📊 Status', value: '✅ Mission Complete', inline: true }
                 )
                 .setTimestamp()
-                .setFooter({ text: `Operation ID: ${activeOperation.id}` });
+                .setFooter({ text: `Operation ID: ${operationId}` });
 
             // Post final report in info channel before deletion
             if (infoChannel) {
@@ -71,14 +140,14 @@ module.exports = {
                         console.error(`Failed to remove role from ${member.displayName}:`, error);
                     }
                 }
-                await operationRole.delete(`Operation ${activeOperation.name} concluded`);
+                await operationRole.delete(`Operation ${operation.name} concluded`);
             }
 
             // Delete all operation channels
             const channelsToDelete = [voiceChannel, infoChannel, chatChannel].filter(Boolean);
             for (const channel of channelsToDelete) {
                 try {
-                    await channel.delete(`Operation ${activeOperation.name} concluded`);
+                    await channel.delete(`Operation ${operation.name} concluded`);
                 } catch (error) {
                     console.error(`Failed to delete channel ${channel.name}:`, error);
                 }
@@ -87,20 +156,27 @@ module.exports = {
             // Delete category
             if (category) {
                 try {
-                    await category.delete(`Operation ${activeOperation.name} concluded`);
+                    await category.delete(`Operation ${operation.name} concluded`);
                 } catch (error) {
                     console.error(`Failed to delete category:`, error);
                 }
             }
 
-            // Mark operation as inactive
-            activeOperations.set(activeOperation.id, { ...activeOperation, active: false });
+            // Remove operation from memory and mark as inactive
+            operation.active = false;
+            activeOperations.delete(operationId);
+            
+            // Save operations data
+            await operationStart.saveOperations();
 
-            await interaction.editReply({
-                content: `✅ **Operation ${activeOperation.name} has been terminated.**\n\n` +
-                        `🗑️ Role and channels have been cleaned up.\n` +
-                        `📊 Operation ran for ${Math.floor(duration / (1000 * 60 * 60))} hours and ${Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60))} minutes.`
-            });
+            // Reply based on interaction type
+            const successMessage = `✅ **Operation ${operation.name} has been terminated.**\n\n🗑️ Role and channels have been cleaned up.\n📊 Operation ran for ${Math.floor(duration)} hours and ${Math.floor((duration % 1) * 60)} minutes.`;
+            
+            if (interaction.replied || interaction.deferred) {
+                await interaction.editReply({ content: successMessage });
+            } else {
+                await interaction.reply({ content: successMessage, flags: 64 });
+            }
 
         } catch (error) {
             console.error('❌ Error stopping operation:', error);

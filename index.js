@@ -224,6 +224,13 @@ client.on(Events.InteractionCreate, async interaction => {
                     await command.handleRemoveAssignment(interaction);
                 }
             }
+            // Handle operation stop selection
+            else if (interaction.customId === 'select_operation_stop') {
+                const command = interaction.client.commands.get('operation-stop');
+                if (command && command.handleOperationStopSelection) {
+                    await command.handleOperationStopSelection(interaction);
+                }
+            }
         } catch (error) {
             console.error('❌ Error handling dropdown selection:', error);
             if (!interaction.replied && !interaction.deferred) {
@@ -257,7 +264,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 }
             }
             // Handle operation edit modals
-            else if (interaction.customId.startsWith('edit_form_')) {
+            else if (interaction.customId.startsWith('edit_form_') || interaction.customId.startsWith('edit_details_form_') || interaction.customId.startsWith('edit_positions_form_')) {
                 const command = interaction.client.commands.get('operation');
                 if (command && command.handleEditModal) {
                     await command.handleEditModal(interaction);
