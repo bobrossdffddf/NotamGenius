@@ -47,12 +47,19 @@ class RosterUpdater {
                 'Trainee': '1408854677784887449'
             };
 
+            // Purge channel before updating
+            try {
+                const messages = await channel.messages.fetch({ limit: 100 });
+                await channel.bulkDelete(messages);
+            } catch (purgeError) {
+                console.warn('⚠️ Could not purge channel messages:', purgeError.message);
+            }
+
             // Create roster embed
             const embed = new EmbedBuilder()
-                .setTitle('🎖️ ACTIVE PERSONNEL ROSTER')
+                .setTitle('📋 PERSONNEL ROSTER')
                 .setColor(0x2F3136)
-                .setThumbnail(guild.iconURL())
-                .setDescription('```ansi\n[2;36m▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀[0m\n[2;36m           DEPARTMENT OF DEFENSE           [0m\n[2;36m        UNITED STATES AIR FORCE           [0m\n[2;36m▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄[0m\n```')
+                .setDescription('**Department of Defense - United States Air Force**')
                 .setTimestamp();
 
             // Get total personnel count (excluding bots)
@@ -69,42 +76,35 @@ class RosterUpdater {
                     if (roleMembers.size > 0) {
                         let memberList = '';
                         
-                        // Sort members by join date (most recent first)
+                        // Sort members alphabetically
                         const sortedMembers = Array.from(roleMembers.values())
-                            .sort((a, b) => b.joinedAt - a.joinedAt)
-                            .slice(0, 12); // Limit to 12 members per role
+                            .sort((a, b) => a.displayName.localeCompare(b.displayName))
+                            .slice(0, 15); // Show more members
 
                         for (const member of sortedMembers) {
-                            const onlineStatus = member.presence?.status === 'online' ? '🟢' : 
-                                               member.presence?.status === 'idle' ? '🟡' :
-                                               member.presence?.status === 'dnd' ? '🔴' : '⚫';
-                            
-                            memberList += `${onlineStatus} **${member.displayName}**\n`;
+                            memberList += `• ${member.displayName}\n`;
                         }
 
-                        if (roleMembers.size > 12) {
-                            memberList += `*... and ${roleMembers.size - 12} more personnel*`;
+                        if (roleMembers.size > 15) {
+                            memberList += `*... ${roleMembers.size - 15} more*`;
                         }
 
-                        const roleHeader = this.getRoleHeader(roleName, roleMembers.size);
                         embed.addFields({
-                            name: roleHeader,
+                            name: `${this.getRoleIcon(roleName)} ${roleName} (${roleMembers.size})`,
                             value: memberList,
                             inline: true
                         });
                     } else {
-                        const roleHeader = this.getRoleHeader(roleName, 0);
                         embed.addFields({
-                            name: roleHeader,
+                            name: `${this.getRoleIcon(roleName)} ${roleName} (0)`,
                             value: '*No personnel assigned*',
                             inline: true
                         });
                     }
                 } else {
                     console.warn(`⚠️ Role not found: ${roleName} (${roleId})`);
-                    const roleHeader = this.getRoleHeader(roleName, 0);
                     embed.addFields({
-                        name: roleHeader,
+                        name: `${this.getRoleIcon(roleName)} ${roleName} (0)`,
                         value: '*Role not found*',
                         inline: true
                     });
@@ -127,35 +127,20 @@ class RosterUpdater {
                 });
             }
 
-            // Add summary statistics with better formatting
+            // Add simple statistics
             const onlineCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === 'online').size;
-            const awayCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === 'idle').size;
-            const busyCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === 'dnd').size;
-            const offlineCount = totalPersonnel - onlineCount - awayCount - busyCount;
 
             embed.addFields({
-                name: '📊 **FORCE READINESS STATUS**',
-                value: `\`\`\`yaml\nTotal Personnel: ${totalPersonnel}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOperational: ${onlineCount} 🟢    |    Standby: ${awayCount} 🟡\nBusy: ${busyCount} 🔴           |    Offline: ${offlineCount} ⚫\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nReadiness Level: ${this.getReadinessLevel(onlineCount, totalPersonnel)}\n\`\`\``,
+                name: '📊 Summary',
+                value: `Total Personnel: **${totalPersonnel}**\nCurrently Online: **${onlineCount}**`,
                 inline: false
             });
 
             embed.setFooter({ 
-                text: `Last Updated: ${new Date().toLocaleTimeString()} • Auto-refresh: 5min • DoD Classification: UNCLASSIFIED`,
-                iconURL: guild.iconURL()
+                text: `Last Updated: ${new Date().toLocaleTimeString()} • Updates every 5 minutes`
             });
 
-            // Delete previous roster message and send new one
-            if (this.lastMessageId) {
-                try {
-                    const oldMessage = await channel.messages.fetch(this.lastMessageId);
-                    await oldMessage.delete();
-                } catch (error) {
-                    // Message might already be deleted, ignore error
-                }
-            }
-
             const newMessage = await channel.send({ embeds: [embed] });
-            this.lastMessageId = newMessage.id;
 
             console.log(`📋 Roster updated in ${guild.name}`);
 

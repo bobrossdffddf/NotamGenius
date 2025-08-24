@@ -38,34 +38,24 @@ module.exports = {
             
             switch (aircraftType) {
                 case 'f22':
-                    const f22Number = (seed % 9) + 1;
                     const useRaptor = seed % 2 === 0;
-                    callsign = useRaptor ? `RAPTOR-${f22Number}` : `RAP-${f22Number}`;
-                    aircraftInfo = '🛩️ **F-22 Raptor** | Flight Leader #1';
+                    callsign = useRaptor ? `RAPTOR-1` : `RAP-1`;
                     break;
                     
                 case 'f16':
-                    const f16Number = (seed % 9) + 1;
-                    callsign = `VIPER-${f16Number}`;
-                    aircraftInfo = '✈️ **F-16 Viper** | Flight Leader #2';
+                    callsign = `VIPER-1`;
                     break;
                     
                 case 'f35':
-                    const f35Number = (seed % 9) + 1;
-                    callsign = `PANTHER-${f35Number}`;
-                    aircraftInfo = '🦅 **F-35 Lightning II**';
+                    callsign = `PANTHER-1`;
                     break;
                     
                 case 'c17':
-                    const c17Number = 1000 + (seed % 9000);
-                    callsign = `SAM-${c17Number}`;
-                    aircraftInfo = '🛫 **C-17 Globemaster III**';
+                    callsign = `SAM-1000`;
                     break;
                     
                 case 'awacs':
-                    const awacsNumber = 1000 + (seed % 9000);
-                    callsign = `NATO-${awacsNumber}`;
-                    aircraftInfo = '📡 **E-3 Sentry AWACS**';
+                    callsign = `NATO-1000`;
                     break;
             }
         } else {
@@ -76,24 +66,13 @@ module.exports = {
             const seed = parseInt(targetUser.id.slice(-6), 16);
             const prefix = prefixes[seed % prefixes.length];
             const suffix = suffixes[(seed * 7) % suffixes.length];
-            const number = (seed % 99) + 1;
 
-            callsign = `${prefix} ${suffix} ${number.toString().padStart(2, '0')}`;
-            aircraftInfo = '🎖️ **General Military Callsign**';
+            callsign = `${prefix} ${suffix} 1`;
         }
 
-        const embed = new EmbedBuilder()
-            .setTitle('🎖️ Military Callsign Generated')
-            .setColor(0x5865F2)
-            .addFields(
-                { name: '👤 Personnel', value: targetUser.displayName, inline: true },
-                { name: '📻 Callsign', value: `**${callsign}**`, inline: true },
-                { name: '✈️ Aircraft/Type', value: aircraftInfo, inline: false }
-            )
-            .setThumbnail(targetUser.displayAvatarURL())
-            .setFooter({ text: 'Callsign generated based on user ID seed' })
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ 
+            content: `🎖️ **Callsign:** ${callsign}`,
+            ephemeral: true 
+        });
     }
 };
