@@ -265,7 +265,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    colors: [0xFF6B35],
+                    color: 0xFF6B35,
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -413,7 +413,7 @@ module.exports = {
                 discordTimestamp = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
             }
             
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ EFFECTIVE TIME:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operation.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ EFFECTIVE TIME:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -584,7 +584,7 @@ module.exports = {
             // Create operation role
             const operationRole = await guild.roles.create({
                 name: roleName,
-                colors: [0xFF4500],
+                color: 0xFF4500,
                 mentionable: true,
                 reason: `Operation ${operationName} role`
             });
