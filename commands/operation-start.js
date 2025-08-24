@@ -265,7 +265,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    color: 0xFF6B35,
+                    colors: [0xFF6B35],
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -384,7 +384,19 @@ module.exports = {
             const currentDate = new Date();
             const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
             
-            const dmNotamContent = `⚠️ **OPERATIONAL DEPLOYMENT NOTICE**\n🚁 **NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT**\n\n**OPERATION DESIGNATION:** ${operationName.toUpperCase()}\n**EFFECTIVE TIME:** ${operationTime}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n\n**MISSION BRIEF:**\n${operationDetails}\n\n**ADDITIONAL DIRECTIVES:**\n${additionalNotes}\n\n**PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}\n\n# Operation Details\n\n[${operationDetails}]\n\n# Operation Positions\n\n**Operation Leader:** ${operationLeader}\n**Response Required:** All personnel must respond within 30 minutes\n\n# Important Information\n\nThe Information is subject to change. A notification will go out following any vital changes to the operation or its information. This is a *preliminary* operation briefing, an official one is to be held prior to the operation.\n\nPlease ping [${operationLeader}] to reserve your spot/role in the operation\n\nThe operation is subject to change time and/or date if availability\n\n${additionalNotes}\n\n# End of Operation\n\n**END OF OPERATION ${operationName.toUpperCase()} | GENERATED [${currentDate.toISOString().substring(11, 16)}z]**`;
+            // Create Discord timestamp from operation time
+            const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
+            const timeMatch = operationTime.match(timeRegex);
+            let discordTimestamp = '<t:1756013700:R>'; // fallback
+            
+            if (timeMatch) {
+                const [, month, day, hour, minute, timezone] = timeMatch;
+                const year = new Date().getFullYear();
+                const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
+                discordTimestamp = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
+            }
+            
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n###🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**EFFECTIVE TIME:** ${discordTimestamp}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n_________________________________________________\n### **MISSION BRIEF:**\n${operationDetails}\n__________________________________________________\n### **ADDITIONAL DIRECTIVES:**\n${additionalNotes}\n_________________________________________________\n###**PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -775,10 +787,12 @@ module.exports = {
         // Give operation role if they said yes
         if (response === 'yes' && operation.operationRoleId) {
             try {
-                const member = await interaction.guild.members.fetch(interaction.user.id);
-                const operationRole = interaction.guild.roles.cache.get(operation.operationRoleId);
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const member = await guild.members.fetch(interaction.user.id);
+                const operationRole = guild.roles.cache.get(operation.operationRoleId);
                 if (operationRole && !member.roles.cache.has(operation.operationRoleId)) {
                     await member.roles.add(operationRole);
+                    console.log(`✅ Added operation role to ${member.user.tag}`);
                 }
             } catch (error) {
                 console.error('Error adding operation role:', error);
@@ -786,8 +800,9 @@ module.exports = {
         } else if (response !== 'yes' && operation.operationRoleId) {
             // Remove role if they changed from yes to no/tbd
             try {
-                const member = await interaction.guild.members.fetch(interaction.user.id);
-                const operationRole = interaction.guild.roles.cache.get(operation.operationRoleId);
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const member = await guild.members.fetch(interaction.user.id);
+                const operationRole = guild.roles.cache.get(operation.operationRoleId);
                 if (operationRole && member.roles.cache.has(operation.operationRoleId)) {
                     await member.roles.remove(operationRole);
                 }
@@ -799,7 +814,8 @@ module.exports = {
         // Update details message with new attending count
         if (operation.detailsMessageId) {
             try {
-                const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const detailsChannel = guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
                 if (detailsChannel) {
                     const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
                     const updatedEmbed = EmbedBuilder.from(detailsMessage.embeds[0])
