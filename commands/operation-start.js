@@ -26,6 +26,11 @@ module.exports = {
             subcommand
                 .setName('schedule')
                 .setDescription('Schedule an operation and notify role members')
+                .addStringOption(option =>
+                    option.setName('time')
+                        .setDescription('Operation time (e.g. "Dec 15 2PM EST" or "Tomorrow 6PM")')
+                        .setRequired(true)
+                )
         ),
 
     async execute(interaction) {
@@ -101,10 +106,17 @@ module.exports = {
     },
 
     async handleOperationSchedule(interaction) {
+        // Get time from command option
+        const operationTime = interaction.options.getString('time');
+        
+        // Store the time for use in modal handling
+        const tempId = `temp_${interaction.user.id}_${Date.now()}`;
+        operationSchedules.set(tempId, { tempTime: operationTime });
+        
         // Create modal to collect operation details
         const modal = new ModalBuilder()
-            .setCustomId('operation_schedule_form')
-            .setTitle('Schedule Operation - Enter Details');
+            .setCustomId(`operation_schedule_form_${tempId}`)
+            .setTitle(`Schedule Operation - Time: ${operationTime}`);
 
         // Operation Name
         const operationNameInput = new TextInputBuilder()
@@ -112,15 +124,6 @@ module.exports = {
             .setLabel('Operation Name')
             .setStyle(TextInputStyle.Short)
             .setPlaceholder('e.g., "Anchorage Resolution"')
-            .setRequired(true)
-            .setMaxLength(100);
-
-        // Operation Date & Time (simplified)
-        const operationTimeInput = new TextInputBuilder()
-            .setCustomId('schedule_operation_time')
-            .setLabel('Operation Date & Time')
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder('e.g., "Dec 15 2PM EST" or "Tomorrow 6PM"')
             .setRequired(true)
             .setMaxLength(100);
 
@@ -152,12 +155,11 @@ module.exports = {
             .setMaxLength(1000);
 
         const row1 = new ActionRowBuilder().addComponents(operationNameInput);
-        const row2 = new ActionRowBuilder().addComponents(operationTimeInput);
         const row3 = new ActionRowBuilder().addComponents(operationDetailsInput);
         const row4 = new ActionRowBuilder().addComponents(operationLeaderInput);
         const row5 = new ActionRowBuilder().addComponents(additionalNotesInput);
 
-        modal.addComponents(row1, row2, row3, row4, row5);
+        modal.addComponents(row1, row3, row4, row5);
 
         await interaction.showModal(modal);
     },
@@ -165,23 +167,38 @@ module.exports = {
     async handleModal(interaction) {
         if (interaction.customId === 'operation_start_form') {
             await this.handleOperationStartModal(interaction);
-        } else if (interaction.customId === 'operation_schedule_form') {
+        } else if (interaction.customId.startsWith('operation_schedule_form_')) {
             await this.handleOperationScheduleModal(interaction);
         }
     },
 
     async handleOperationScheduleModal(interaction) {
         try {
+            // Extract temp ID from custom ID
+            const tempId = interaction.customId.split('_').slice(-1)[0];
+            const tempData = operationSchedules.get(`temp_${interaction.user.id}_${tempId}`);
+            
+            if (!tempData) {
+                await interaction.reply({
+                    content: '❌ Session expired. Please try the command again.',
+                    flags: 64
+                });
+                return;
+            }
+            
             // Get form data
             const operationName = interaction.fields.getTextInputValue('schedule_operation_name');
-            const operationTime = interaction.fields.getTextInputValue('schedule_operation_time');
+            const operationTime = tempData.tempTime; // Use time from command
             const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
             const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
             const additionalNotes = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
+            
+            // Clean up temp data
+            operationSchedules.delete(`temp_${interaction.user.id}_${tempId}`);
 
             // Store operation data
             const operationId = `op_${Date.now()}`;
-            operationSchedules.set(operationId, {
+            const operationData = {
                 name: operationName,
                 time: operationTime,
                 details: operationDetails,
@@ -193,14 +210,15 @@ module.exports = {
                 attendingCount: 0,
                 operationRoleId: null,
                 detailsMessageId: null
-            });
+            };
+            operationSchedules.set(operationId, operationData);
 
             // Find target role
             const targetRole = interaction.guild.roles.cache.get(TARGET_ROLE_ID);
             if (!targetRole) {
                 await interaction.reply({
                     content: '❌ **Error**: Target role not found. Please check the role configuration.',
-                    ephemeral: true
+                    flags: 64
                 });
                 return;
             }
@@ -211,25 +229,45 @@ module.exports = {
             if (membersWithRole.size === 0) {
                 await interaction.reply({
                     content: '❌ **No Members**: No members found with the target role.',
-                    ephemeral: true
+                    flags: 64
                 });
                 return;
             }
 
-            // Create the operation notification embed
+            // Create NOTAM-style operation notification
+            const notamContent = `**🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT**
+
+` +
+                `**OPERATION DESIGNATION:** ${operationName.toUpperCase()}
+` +
+                `**EFFECTIVE TIME:** ${operationTime}
+` +
+                `**OPERATION COMMANDER:** ${operationLeader}
+` +
+                `**CLASSIFICATION:** RESTRICTED
+
+` +
+                `**MISSION BRIEF:**
+${operationDetails}
+
+` +
+                `**ADDITIONAL DIRECTIVES:**
+${additionalNotes}
+
+` +
+                `**PERSONNEL RESPONSE REQUIRED:**
+Confirm your operational availability using the response options below.
+
+` +
+                `**OPERATION ID:** ${operationId}
+` +
+                `**ISSUED BY:** ${interaction.user.tag} | ${new Date().toISOString().replace('T', ' ').substring(0, 19)}Z`;
+
             const operationEmbed = new EmbedBuilder()
-                .setTitle('🚁 **OPERATION SCHEDULED**')
-                .setDescription(`**${operationName}**`)
-                .addFields(
-                    { name: '📅 **Date & Time**', value: operationTime, inline: true },
-                    { name: '👤 **Operation Leader**', value: operationLeader, inline: true },
-                    { name: '\u200B', value: '\u200B', inline: true },
-                    { name: '📋 **Operation Details**', value: operationDetails, inline: false },
-                    { name: '📝 **Additional Notes**', value: additionalNotes, inline: false },
-                    { name: '❓ **Response Required**', value: 'Please indicate your availability by clicking one of the buttons below.', inline: false }
-                )
-                .setColor(0xFF6B35)
-                .setFooter({ text: `Operation ID: ${operationId} | Scheduled by ${interaction.user.tag}` })
+                .setTitle('⚠️ **OPERATIONAL DEPLOYMENT NOTICE**')
+                .setDescription(notamContent)
+                .setColor(0xFF4500)
+                .setFooter({ text: `RESPOND IMMEDIATELY | Operation ${operationId}` })
                 .setTimestamp();
 
             // Create response buttons
@@ -256,7 +294,7 @@ module.exports = {
             for (const [memberId, member] of membersWithRole) {
                 try {
                     await member.send({
-                        content: `**📢 Operation Notification from ${interaction.guild.name}**`,
+                        content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
                         embeds: [operationEmbed],
                         components: [responseRow]
                     });
@@ -277,7 +315,7 @@ module.exports = {
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
-                operation.operationRoleId = operationRole.id;
+                operationData.operationRoleId = operationRole.id;
             } catch (error) {
                 console.error('Error creating operation role:', error);
             }
@@ -301,7 +339,7 @@ module.exports = {
 
                 try {
                     const detailsMessage = await detailsChannel.send({ embeds: [detailsEmbed] });
-                    operation.detailsMessageId = detailsMessage.id;
+                        operationData.detailsMessageId = detailsMessage.id;
                 } catch (error) {
                     console.error('Error posting to details channel:', error);
                 }
@@ -322,7 +360,7 @@ module.exports = {
 
             await interaction.reply({
                 embeds: [confirmEmbed],
-                ephemeral: true
+                flags: 64
             });
 
             // Auto-cleanup operation data after 24 hours
@@ -334,14 +372,14 @@ module.exports = {
             console.error('Error processing operation schedule modal:', error);
             await interaction.reply({
                 content: '❌ **Error**: There was an error processing your operation schedule. Please try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
 
     async handleOperationStartModal(interaction) {
         // Defer reply immediately to prevent timeout
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         const operationName = interaction.fields.getTextInputValue('operation_name');
         const duration = parseInt(interaction.fields.getTextInputValue('operation_duration'));
@@ -561,7 +599,7 @@ module.exports = {
         if (!operation) {
             await interaction.reply({
                 content: '❌ **Operation Expired**: This operation is no longer accepting responses.',
-                ephemeral: true
+                flags: 64
             });
             return;
         }
@@ -636,7 +674,7 @@ module.exports = {
 
         await interaction.reply({
             content: responseMessages[response] + `\n\n**Operation**: ${operation.name}\n**Time**: ${operation.time}\n**Currently Attending**: ${operation.attendingCount}`,
-            ephemeral: true
+            flags: 64
         });
 
         console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}" (Attending: ${operation.attendingCount})`);
