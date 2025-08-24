@@ -28,28 +28,21 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('apply')
         .setDescription('Apply for certification training')
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('request')
-                .setDescription('Request certification training')
-                .addStringOption(option =>
-                    option
-                        .setName('certification')
-                        .setDescription('Type of certification to apply for')
-                        .setRequired(true)
-                        .addChoices(
-                            { name: 'ATC Certified', value: 'atc' },
-                            { name: 'AF1 Cert', value: 'af1' },
-                            { name: 'USMC | Marine One Certified', value: 'marine-one' },
-                            { name: 'Ground Operations Certified', value: 'ground-ops' }
-                        )
+        .addStringOption(option =>
+            option
+                .setName('certification')
+                .setDescription('Type of certification to apply for')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'ATC Certified', value: 'atc' },
+                    { name: 'AF1 Cert', value: 'af1' },
+                    { name: 'USMC | Marine One Certified', value: 'marine-one' },
+                    { name: 'Ground Operations Certified', value: 'ground-ops' }
                 )
         ),
 
     async execute(interaction) {
-        if (interaction.options.getSubcommand() === 'request') {
-            await this.handleCertificationRequest(interaction);
-        }
+        await this.handleCertificationRequest(interaction);
     },
 
     async handleCertificationRequest(interaction) {
