@@ -41,16 +41,16 @@ class RosterUpdater {
 
             // Create roster embed
             const embed = new EmbedBuilder()
-                .setTitle('📋 ACTIVE PERSONNEL ROSTER')
-                .setColor(0x1F8B4C)
+                .setTitle('🎖️ ACTIVE PERSONNEL ROSTER')
+                .setColor(0x2F3136)
                 .setThumbnail(guild.iconURL())
-                .setDescription('**Current deployment status and certifications**')
+                .setDescription('```ansi\n[2;36m▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀[0m\n[2;36m           DEPARTMENT OF DEFENSE           [0m\n[2;36m        UNITED STATES AIR FORCE           [0m\n[2;36m▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄[0m\n```')
                 .setTimestamp();
 
             // Get total personnel count (excluding bots)
             const totalPersonnel = guild.members.cache.filter(member => !member.user.bot).size;
             
-            // Add certification sections
+            // Add certification sections with better formatting
             for (const [roleName, roleId] of Object.entries(certificationRoles)) {
                 const role = guild.roles.cache.get(roleId);
                 if (role && role.members.size > 0) {
@@ -60,29 +60,31 @@ class RosterUpdater {
                     const sortedMembers = Array.from(role.members.values())
                         .filter(member => !member.user.bot)
                         .sort((a, b) => b.joinedAt - a.joinedAt)
-                        .slice(0, 15); // Limit to 15 members per role to avoid embed limits
+                        .slice(0, 12); // Limit to 12 members per role
 
                     for (const member of sortedMembers) {
                         const onlineStatus = member.presence?.status === 'online' ? '🟢' : 
                                            member.presence?.status === 'idle' ? '🟡' :
                                            member.presence?.status === 'dnd' ? '🔴' : '⚫';
                         
-                        memberList += `${onlineStatus} ${member.displayName}\n`;
+                        memberList += `${onlineStatus} **${member.displayName}**\n`;
                     }
 
-                    if (role.members.size > 15) {
-                        memberList += `... and ${role.members.size - 15} more`;
+                    if (role.members.size > 12) {
+                        memberList += `*... and ${role.members.size - 12} more personnel*`;
                     }
 
+                    const roleHeader = this.getRoleHeader(roleName, role.members.size);
                     embed.addFields({
-                        name: `${this.getRoleIcon(roleName)} ${roleName} (${role.members.size})`,
-                        value: memberList || 'None assigned',
+                        name: roleHeader,
+                        value: memberList || '*No personnel assigned*',
                         inline: true
                     });
                 } else {
+                    const roleHeader = this.getRoleHeader(roleName, 0);
                     embed.addFields({
-                        name: `${this.getRoleIcon(roleName)} ${roleName} (0)`,
-                        value: 'None assigned',
+                        name: roleHeader,
+                        value: '*No personnel assigned*',
                         inline: true
                     });
                 }
@@ -98,26 +100,27 @@ class RosterUpdater {
                 const timeRemaining = Math.max(0, Math.floor((activeOperation.endTime - Date.now()) / (1000 * 60 * 60)));
                 
                 embed.addFields({
-                    name: '🚁 ACTIVE OPERATION',
-                    value: `**${activeOperation.name.toUpperCase()}**\n` +
-                           `👥 Personnel: ${operationPersonnel}\n` +
-                           `⏱️ Time Remaining: ${timeRemaining}h\n` +
-                           `🎯 Status: ONGOING`,
+                    name: '🚁 **CURRENT OPERATION STATUS**',
+                    value: `\`\`\`fix\nOPERATION: ${activeOperation.name.toUpperCase()}\nPERSONNEL: ${operationPersonnel} ASSIGNED\nTIME REMAINING: ${timeRemaining} HOURS\nSTATUS: ACTIVE\n\`\`\``,
                     inline: false
                 });
             }
 
-            // Add summary statistics
+            // Add summary statistics with better formatting
+            const onlineCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === 'online').size;
+            const awayCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === 'idle').size;
+            const busyCount = guild.members.cache.filter(m => !m.user.bot && m.presence?.status === 'dnd').size;
+            const offlineCount = totalPersonnel - onlineCount - awayCount - busyCount;
+
             embed.addFields({
-                name: '📊 DEPLOYMENT SUMMARY',
-                value: `👥 Total Personnel: **${totalPersonnel}**\n` +
-                       `🟢 Online: **${guild.members.cache.filter(m => m.presence?.status === 'online').size}**\n` +
-                       `🔄 Last Updated: <t:${Math.floor(Date.now() / 1000)}:R>`,
+                name: '📊 **FORCE READINESS STATUS**',
+                value: `\`\`\`yaml\nTotal Personnel: ${totalPersonnel}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOperational: ${onlineCount} 🟢    |    Standby: ${awayCount} 🟡\nBusy: ${busyCount} 🔴           |    Offline: ${offlineCount} ⚫\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nReadiness Level: ${this.getReadinessLevel(onlineCount, totalPersonnel)}\n\`\`\``,
                 inline: false
             });
 
             embed.setFooter({ 
-                text: 'Auto-updates every 5 minutes | 🟢 Online 🟡 Away 🔴 Busy ⚫ Offline'
+                text: `Last Updated: ${new Date().toLocaleTimeString()} • Auto-refresh: 5min • DoD Classification: UNCLASSIFIED`,
+                iconURL: guild.iconURL()
             });
 
             // Delete previous roster message and send new one
@@ -149,6 +152,21 @@ class RosterUpdater {
             case 'Trainee': return '🎓';
             default: return '🎖️';
         }
+    }
+
+    getRoleHeader(roleName, count) {
+        const icon = this.getRoleIcon(roleName);
+        const countBadge = count > 0 ? `[\`${count}\`]` : `[\`0\`]`;
+        return `${icon} **${roleName}** ${countBadge}`;
+    }
+
+    getReadinessLevel(online, total) {
+        const percentage = total > 0 ? (online / total) * 100 : 0;
+        if (percentage >= 80) return "FULL OPERATIONAL ✅";
+        if (percentage >= 60) return "HIGH READINESS 🟢";
+        if (percentage >= 40) return "MODERATE 🟡";
+        if (percentage >= 20) return "LIMITED 🟠";
+        return "MINIMAL 🔴";
     }
 }
 
