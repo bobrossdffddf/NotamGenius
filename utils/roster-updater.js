@@ -30,6 +30,9 @@ class RosterUpdater {
 
             const guild = channel.guild;
             
+            // Fetch all guild members to ensure cache is populated
+            await guild.members.fetch();
+            
             // Define certification roles
             const certificationRoles = {
                 'ATC Certified': '1408995322021154846',
@@ -53,38 +56,51 @@ class RosterUpdater {
             // Add certification sections with better formatting
             for (const [roleName, roleId] of Object.entries(certificationRoles)) {
                 const role = guild.roles.cache.get(roleId);
-                if (role && role.members.size > 0) {
-                    let memberList = '';
+                
+                if (role) {
+                    // Filter out bot members
+                    const roleMembers = role.members.filter(member => !member.user.bot);
                     
-                    // Sort members by join date (most recent first)
-                    const sortedMembers = Array.from(role.members.values())
-                        .filter(member => !member.user.bot)
-                        .sort((a, b) => b.joinedAt - a.joinedAt)
-                        .slice(0, 12); // Limit to 12 members per role
-
-                    for (const member of sortedMembers) {
-                        const onlineStatus = member.presence?.status === 'online' ? '🟢' : 
-                                           member.presence?.status === 'idle' ? '🟡' :
-                                           member.presence?.status === 'dnd' ? '🔴' : '⚫';
+                    if (roleMembers.size > 0) {
+                        let memberList = '';
                         
-                        memberList += `${onlineStatus} **${member.displayName}**\n`;
-                    }
+                        // Sort members by join date (most recent first)
+                        const sortedMembers = Array.from(roleMembers.values())
+                            .sort((a, b) => b.joinedAt - a.joinedAt)
+                            .slice(0, 12); // Limit to 12 members per role
 
-                    if (role.members.size > 12) {
-                        memberList += `*... and ${role.members.size - 12} more personnel*`;
-                    }
+                        for (const member of sortedMembers) {
+                            const onlineStatus = member.presence?.status === 'online' ? '🟢' : 
+                                               member.presence?.status === 'idle' ? '🟡' :
+                                               member.presence?.status === 'dnd' ? '🔴' : '⚫';
+                            
+                            memberList += `${onlineStatus} **${member.displayName}**\n`;
+                        }
 
-                    const roleHeader = this.getRoleHeader(roleName, role.members.size);
-                    embed.addFields({
-                        name: roleHeader,
-                        value: memberList || '*No personnel assigned*',
-                        inline: true
-                    });
+                        if (roleMembers.size > 12) {
+                            memberList += `*... and ${roleMembers.size - 12} more personnel*`;
+                        }
+
+                        const roleHeader = this.getRoleHeader(roleName, roleMembers.size);
+                        embed.addFields({
+                            name: roleHeader,
+                            value: memberList,
+                            inline: true
+                        });
+                    } else {
+                        const roleHeader = this.getRoleHeader(roleName, 0);
+                        embed.addFields({
+                            name: roleHeader,
+                            value: '*No personnel assigned*',
+                            inline: true
+                        });
+                    }
                 } else {
+                    console.warn(`⚠️ Role not found: ${roleName} (${roleId})`);
                     const roleHeader = this.getRoleHeader(roleName, 0);
                     embed.addFields({
                         name: roleHeader,
-                        value: '*No personnel assigned*',
+                        value: '*Role not found*',
                         inline: true
                     });
                 }
