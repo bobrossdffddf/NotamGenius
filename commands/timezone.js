@@ -1,4 +1,5 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { checkAdminPermissions } = require('../utils/permissions');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,18 +13,27 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // Check admin permissions first
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can manage timezone settings.',
+                flags: 64
+            });
+            return;
+        }
+
         const timeInput = interaction.options.getString('time');
-        
+
         try {
             // Parse the input time
             let hours, minutes;
-            
+
             if (timeInput.includes(':')) {
                 const parts = timeInput.toLowerCase().replace(/[^0-9:apm]/g, '');
                 const timeParts = parts.split(':');
                 hours = parseInt(timeParts[0]);
                 minutes = parseInt(timeParts[1]) || 0;
-                
+
                 // Handle AM/PM
                 if (timeInput.toLowerCase().includes('pm') && hours !== 12) {
                     hours += 12;
@@ -33,13 +43,13 @@ module.exports = {
             } else {
                 throw new Error('Invalid format');
             }
-            
+
             if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
                 throw new Error('Invalid time');
             }
-            
+
             const timeStr = `${hours.toString().padStart(2, '0')}${minutes.toString().padStart(2, '0')}`;
-            
+
             const timeZones = [
                 { code: 'Z', name: 'Zulu Time (UTC)', offset: 0 },
                 { code: 'A', name: 'Alpha (UTC+1)', offset: 1 },
@@ -51,17 +61,17 @@ module.exports = {
                 { code: 'H', name: 'Hotel (UTC+8)', offset: 8 },
                 { code: 'I', name: 'India (UTC+9)', offset: 9 },
             ];
-            
+
             let response = `⏰ **Time Conversion for ${timeInput}**\n\n`;
-            
+
             timeZones.forEach(tz => {
                 const convertedHours = (hours + tz.offset) % 24;
                 const convertedTime = `${convertedHours.toString().padStart(2, '0')}${minutes.toString().padStart(2, '0')}${tz.code}`;
                 response += `**${tz.code}** - ${tz.name}: **${convertedTime}**\n`;
             });
-            
+
             await interaction.reply({ content: response, flags: 64 });
-            
+
         } catch (error) {
             await interaction.reply({
                 content: '❌ Invalid time format. Use format like "14:30" or "2:30 PM"',

@@ -1,13 +1,33 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
+// Assuming checkAdminPermissions is defined elsewhere and imported or globally available
+// For the sake of this example, let's assume a placeholder function if it's not provided.
+// In a real scenario, you'd import this function or ensure it's defined in scope.
+function checkAdminPermissions(member) {
+    // Placeholder: Replace with actual admin role checking logic
+    // Example: Check if the member has a specific administrator role
+    const adminRoleID = 'YOUR_ADMIN_ROLE_ID'; // Replace with the actual admin role ID
+    return member.roles.cache.some(role => role.id === adminRoleID);
+}
+
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('roster')
         .setDescription('View current personnel and their certifications'),
 
     async execute(interaction) {
+        // Check admin permissions first
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can manage rosters.',
+                flags: 64
+            });
+            return;
+        }
+
         const guild = interaction.guild;
-        
+
         // Role IDs for certifications
         const certificationRoles = {
             'ATC Certified': '1408995322021154846',

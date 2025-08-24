@@ -25,6 +25,51 @@ module.exports = {
                 .setName('message')
                 .setDescription('Additional briefing message')
                 .setRequired(false)
+                .setMaxLength(500)
+        ),
+
+    async execute(interaction) {
+        // Check admin permissions first
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can create briefings.',
+                flags: 64
+            });
+            return;
+        }
+
+        const status = interaction.options.getString('status');
+        const message = interaction.options.getString('message') || '';
+
+        // Status configurations
+        const statusConfig = {
+            'defcon5': { emoji: '🟢', name: 'DEFCON 5 - Exercise Term', color: 0x00FF00 },
+            'defcon4': { emoji: '🔵', name: 'DEFCON 4 - Normal Readiness', color: 0x0099FF },
+            'defcon3': { emoji: '🟡', name: 'DEFCON 3 - Increase Readiness', color: 0xFFFF00 },
+            'defcon2': { emoji: '🟠', name: 'DEFCON 2 - Next Step to Nuclear War', color: 0xFF9900 },
+            'defcon1': { emoji: '🔴', name: 'DEFCON 1 - Nuclear War Imminent', color: 0xFF0000 },
+            'clear': { emoji: '✅', name: 'All Clear', color: 0x00FF00 },
+            'training': { emoji: '⚠️', name: 'Training Exercise', color: 0xFFAA00 }
+        };
+
+        const currentStatus = statusConfig[status];
+
+        const embed = new EmbedBuilder()
+            .setTitle(`${currentStatus.emoji} OPERATIONAL BRIEFING`)
+            .setColor(currentStatus.color)
+            .addFields(
+                { name: '📊 Current Status', value: currentStatus.name, inline: true },
+                { name: '👤 Briefing Officer', value: `<@${interaction.user.id}>`, inline: true },
+                { name: '📅 Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+            )
+            .setTimestamp();
+
+        if (message) {
+            embed.addFields({ name: '📝 Additional Information', value: message });
+        }
+
+        await interaction.reply({ embeds: [embed] });
+    }red(false)
         ),
 
     async execute(interaction) {
