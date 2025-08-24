@@ -265,7 +265,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    colors: [0xFF6B35],
+                    color: 0xFF6B35,
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -396,7 +396,7 @@ module.exports = {
                 discordTimestamp = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
             }
             
-            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n###🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**EFFECTIVE TIME:** ${discordTimestamp}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n_________________________________________________\n### **MISSION BRIEF:**\n${operationDetails}\n__________________________________________________\n### **ADDITIONAL DIRECTIVES:**\n${additionalNotes}\n_________________________________________________\n###**PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**EFFECTIVE TIME:** ${discordTimestamp}\n**OPERATION COMMANDER:** ${operationLeader}\n**CLASSIFICATION:** RESTRICTED\n_________________________________________________\n### **MISSION BRIEF:**\n${operationDetails}\n__________________________________________________\n### **ADDITIONAL DIRECTIVES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -458,20 +458,46 @@ module.exports = {
             operationData.channelEmbed = channelEmbed;
             operationSchedules.set(operationId, operationData);
 
-            // Create operation role
-            const operationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
-            let operationRole;
-            try {
-                operationRole = await interaction.guild.roles.create({
-                    name: operationRoleName,
-                    color: 0xFF6B35,
-                    mentionable: true,
-                    reason: `Operation ${operationName} participant role`
-                });
-                operationData.operationRoleId = operationRole.id;
-            } catch (error) {
-                console.error('Error creating operation role:', error);
+            // Add operation briefing to info channel like in operation start
+            if (scheduleInfoChannel) {
+                const briefingEmbed = new EmbedBuilder()
+                    .setTitle(`🚁 OPERATION ${operationName.toUpperCase()} - SCHEDULED`)
+                    .setColor(0xFF4500)
+                    .addFields(
+                        { name: '👤 Operation Leader', value: operationLeader, inline: true },
+                        { name: '📅 Scheduled Time', value: operationTime, inline: true },
+                        { name: '🔒 Classification', value: 'RESTRICTED', inline: true },
+                        { name: '🎯 Mission Brief', value: operationDetails },
+                        { name: '📝 Additional Directives', value: additionalNotes },
+                        { name: '🏷️ Operation Role', value: `<@&${scheduleOperationRole.id}>`, inline: true },
+                        { name: '👥 Currently Attending', value: '0', inline: true }
+                    )
+                    .setTimestamp()
+                    .setFooter({ text: `Operation ID: ${operationId}` });
+
+                await scheduleInfoChannel.send({ embeds: [briefingEmbed] });
             }
+
+            // Add to activeOperations so it can be managed by /operation stop and /operation add
+            const activeOperationData = {
+                name: operationName,
+                commander: interaction.user.id,
+                startTime: Date.now(),
+                endTime: null, // No end time for scheduled operations until started
+                duration: null,
+                objective: operationDetails,
+                classification: 'RESTRICTED',
+                notes: additionalNotes,
+                roleId: scheduleOperationRole.id,
+                categoryId: scheduleCategory.id,
+                voiceChannelId: scheduleVoiceChannel.id,
+                infoChannelId: scheduleInfoChannel.id,
+                chatChannelId: scheduleChatChannel.id,
+                guildId: interaction.guild.id,
+                active: true,
+                scheduled: true // Mark as scheduled operation
+            };
+            activeOperations.set(operationId, activeOperationData);
 
             // Post operation details to the specified channel
             const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
