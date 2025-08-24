@@ -183,15 +183,17 @@ module.exports = {
 
     async handleOperationScheduleModal(interaction) {
         try {
+            // Defer reply immediately to prevent timeout
+            await interaction.deferReply({ flags: 64 });
+
             // Extract temp ID from custom ID
             const tempId = interaction.customId.split('_').pop();
             const tempKey = `temp_${interaction.user.id}_${tempId}`;
             const tempData = operationSchedules.get(tempKey);
             
             if (!tempData) {
-                await interaction.reply({
-                    content: '❌ Session expired. Please try the command again.',
-                    flags: 64
+                await interaction.editReply({
+                    content: '❌ Session expired. Please try the command again.'
                 });
                 return;
             }
@@ -227,9 +229,8 @@ module.exports = {
             // Find target role
             const targetRole = interaction.guild.roles.cache.get(TARGET_ROLE_ID);
             if (!targetRole) {
-                await interaction.reply({
-                    content: '❌ **Error**: Target role not found. Please check the role configuration.',
-                    flags: 64
+                await interaction.editReply({
+                    content: '❌ **Error**: Target role not found. Please check the role configuration.'
                 });
                 return;
             }
@@ -238,9 +239,8 @@ module.exports = {
             const membersWithRole = targetRole.members;
             
             if (membersWithRole.size === 0) {
-                await interaction.reply({
-                    content: '❌ **No Members**: No members found with the target role.',
-                    flags: 64
+                await interaction.editReply({
+                    content: '❌ **No Members**: No members found with the target role.'
                 });
                 return;
             }
@@ -369,9 +369,8 @@ Confirm your operational availability using the response options below.
                 .setColor(0x00FF00)
                 .setTimestamp();
 
-            await interaction.reply({
-                embeds: [confirmEmbed],
-                flags: 64
+            await interaction.editReply({
+                embeds: [confirmEmbed]
             });
 
             // Auto-cleanup operation data after 24 hours
@@ -381,9 +380,8 @@ Confirm your operational availability using the response options below.
 
         } catch (error) {
             console.error('Error processing operation schedule modal:', error);
-            await interaction.reply({
-                content: '❌ **Error**: There was an error processing your operation schedule. Please try again.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ **Error**: There was an error processing your operation schedule. Please try again.'
             });
         }
     },
