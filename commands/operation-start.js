@@ -384,7 +384,7 @@ module.exports = {
             const currentDate = new Date();
             const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
 
-            // Create Discord timestamp from operation time
+            // Create Discord timestamp from operation time - automatically shows in user's timezone
             const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
             const timeMatch = operationTime.match(timeRegex);
             let discordTimestamp = '<t:1756013700:R>'; // fallback
@@ -412,9 +412,9 @@ module.exports = {
                     date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00`);
                 }
 
-                // Create Unix timestamp and Discord timestamp with full format
+                // Create Unix timestamp and Discord timestamp - will show in each user's local timezone
                 const unixTimestamp = Math.floor(date.getTime() / 1000);
-                discordTimestamp = `<t:${unixTimestamp}:F> (${`<t:${unixTimestamp}:R>`})`;
+                discordTimestamp = `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>)`;
             }
 
             const dmNotamContent = `## ⚠️ OPERATIONAL DEPLOYMENT NOTICE\n### 🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**⏰ STARTS:** ${discordTimestamp}\n**👤 OPERATION COMMANDER:** ${operationLeader}\n**🔒 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n________________________________________________________\n**OPERATION ID:** ${operationId}\n**ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
