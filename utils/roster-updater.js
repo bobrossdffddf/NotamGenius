@@ -31,7 +31,12 @@ class RosterUpdater {
             const guild = channel.guild;
             
             // Fetch all guild members to ensure cache is populated
-            await guild.members.fetch();
+            try {
+                await guild.members.fetch({ timeout: 10000 });
+            } catch (fetchError) {
+                console.warn('⚠️ Could not fetch all members, using cached data:', fetchError.message);
+                // Continue with cached members if fetch fails
+            }
             
             // Define certification roles
             const certificationRoles = {
