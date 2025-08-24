@@ -242,7 +242,7 @@ module.exports = {
             .setCustomId('schedule_available_jobs')
             .setLabel('Positions')
             .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('Format: "Position:MaxCount" (e.g., "F-22 Escort:2, F-16 CAP:3, AWACS Support:1")\nOr just "Position" for unlimited slots.')
+            .setPlaceholder('F-22 Escort:2, F-16 CAP:3, AWACS Support:1, Ground Control')
             .setRequired(true)
             .setMaxLength(500);
 
