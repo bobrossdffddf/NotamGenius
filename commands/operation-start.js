@@ -111,6 +111,15 @@ module.exports = {
     },
 
     async handleOperationSchedule(interaction) {
+        // Check admin permissions first
+        if (!checkAdminPermissions(interaction.member)) {
+            await interaction.reply({
+                content: '❌ **Access Denied**\nOnly administrators can schedule operations.',
+                flags: 64
+            });
+            return;
+        }
+        
         // Get date and time from command options
         const operationDate = interaction.options.getString('date');
         const operationTime = interaction.options.getString('time');
@@ -245,40 +254,34 @@ module.exports = {
                 return;
             }
 
-            // Create NOTAM-style operation notification
-            const notamContent = `**🚁 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT**
-
-` +
-                `**OPERATION DESIGNATION:** ${operationName.toUpperCase()}
-` +
-                `**EFFECTIVE TIME:** ${operationTime}
-` +
-                `**OPERATION COMMANDER:** ${operationLeader}
-` +
-                `**CLASSIFICATION:** RESTRICTED
-
-` +
-                `**MISSION BRIEF:**
-${operationDetails}
-
-` +
-                `**ADDITIONAL DIRECTIVES:**
-${additionalNotes}
-
-` +
-                `**PERSONNEL RESPONSE REQUIRED:**
-Confirm your operational availability using the response options below.
-
-` +
-                `**OPERATION ID:** ${operationId}
-` +
-                `**ISSUED BY:** ${interaction.user.tag} | ${new Date().toISOString().replace('T', ' ').substring(0, 19)}Z`;
+            // Create enhanced NOTAM-style operation notification
+            const currentDate = new Date();
+            const notamNumber = `${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}-${operationId.split('_')[1].slice(-4)}`;
+            
+            const notamContent = `🚁 **NOTICE TO AIRMEN (NOTAM)**\n` +
+                `**NOTAM NUMBER:** ${notamNumber}\n` +
+                `**CLASSIFICATION:** FOR OFFICIAL USE ONLY\n` +
+                `**ISSUED:** ${currentDate.toISOString().replace('T', ' ').substring(0, 19)}Z\n\n` +
+                `⚠️ **OPERATIONAL ALERT - IMMEDIATE ATTENTION REQUIRED** ⚠️\n\n` +
+                `**OPERATION DESIGNATION:** ${operationName.toUpperCase()}\n` +
+                `**EFFECTIVE DATE/TIME:** ${operationTime}\n` +
+                `**OPERATION COMMANDER:** ${operationLeader}\n` +
+                `**STATUS:** PERSONNEL MOBILIZATION REQUIRED\n\n` +
+                `**= MISSION BRIEFING =**\n${operationDetails}\n\n` +
+                `**= ADDITIONAL OPERATIONAL DIRECTIVES =**\n${additionalNotes}\n\n` +
+                `**🚨 IMMEDIATE ACTION REQUIRED 🚨**\n` +
+                `ALL PERSONNEL MUST CONFIRM OPERATIONAL AVAILABILITY\n` +
+                `RESPONSE DEADLINE: 30 MINUTES FROM RECEIPT\n` +
+                `USE RESPONSE BUTTONS BELOW - NO EMAIL RESPONSES\n\n` +
+                `**AUTHORITY:** DoD EMERGENCY ALERT SYSTEM\n` +
+                `**ISSUED BY:** ${interaction.user.tag}\n` +
+                `**REF:** Operation ${operationId}`;
 
             const operationEmbed = new EmbedBuilder()
-                .setTitle('⚠️ **OPERATIONAL DEPLOYMENT NOTICE**')
+                .setTitle('🚨 **DEPARTMENT OF DEFENSE - EMERGENCY ALERT**')
                 .setDescription(notamContent)
-                .setColor(0xFF4500)
-                .setFooter({ text: `RESPOND IMMEDIATELY | Operation ${operationId}` })
+                .setColor(0xCC0000)
+                .setFooter({ text: `CLASSIFIED FOUO | RESPOND WITHIN 30 MINUTES | ${notamNumber}` })
                 .setTimestamp();
 
             // Create response buttons
@@ -369,22 +372,8 @@ Confirm your operational availability using the response options below.
                 }
             }
 
-            // Send confirmation to admin
-            const confirmEmbed = new EmbedBuilder()
-                .setTitle('✅ **Operation Scheduled Successfully**')
-                .setDescription(`**${operationName}** notifications have been sent.`)
-                .addFields(
-                    { name: '📊 **Delivery Stats**', value: `✅ Sent: ${successCount}\n❌ Failed: ${failCount}\n👥 Total: ${membersWithRole.size}`, inline: true },
-                    { name: '🎯 **Target Role**', value: targetRole.name, inline: true },
-                    { name: '🆔 **Operation ID**', value: operationId, inline: true },
-                    { name: '🏷️ **Operation Role**', value: operationRole ? `<@&${operationRole.id}>` : 'Failed to create', inline: true }
-                )
-                .setColor(0x00FF00)
-                .setTimestamp();
-
-            await interaction.editReply({
-                embeds: [confirmEmbed]
-            });
+            // Preview mode - wait for admin confirmation
+            // No need to send anything here, preview is already showing
 
             // Auto-cleanup operation data after 24 hours
             setTimeout(() => {
