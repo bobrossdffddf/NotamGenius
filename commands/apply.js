@@ -1,41 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 const { checkAdminPermissions } = require('../utils/permissions');
-
-// Configuration for certification types and channels
-const config = {
-    privateChannelId: '1408965201210114069',
-    traineeRoleId: '1408854677784887449',
-    certificationRoles: {
-        'atc': {
-            name: 'ATC Certified',
-            roleId: '1408995322021154846'
-        },
-        'af1': {
-            name: 'USAF | Air Force One Certified',
-            roleId: '1408942834060361740'
-        },
-        'marine-one': {
-            name: 'USMC | Marine One Certified',
-            roleId: '1408943018991423571'
-        },
-        'ground-ops': {
-            name: 'Ground Operations Certified',
-            roleId: '1408995373455904789'
-        },
-        'f22': {
-            name: 'F-22 Raptor Certified',
-            roleId: '1409300377463165079'
-        },
-        'f35': {
-            name: 'F-35 Lightning II Certified',
-            roleId: '1409300434967072888'
-        },
-        'f16': {
-            name: 'F-16 Fighting Falcon Certified',
-            roleId: '1409300512062574663'
-        }
-    }
-};
+const { guildConfigManager } = require('../config/guild-config');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -67,11 +32,16 @@ module.exports = {
         const member = interaction.member;
         const guild = interaction.guild;
 
-        // Get certification info
-        const certification = config.certificationRoles[certType];
-        if (!certification) {
+        // Auto-discover guild configuration
+        await guildConfigManager.autoDiscoverGuildConfig(guild);
+        
+        // Get certification info from guild config
+        const certificationRoles = guildConfigManager.getGuildConfigValue(guild.id, 'certificationRoles_apply', {});
+        const certification = certificationRoles[certType];
+        
+        if (!certification || !certification.roleId) {
             await interaction.reply({
-                content: '❌ Invalid certification type!',
+                content: `❌ **Configuration Error**: The ${certification?.name || 'requested'} certification is not configured for this server. Please contact an administrator.`,
                 flags: 64
             });
             return;
@@ -89,8 +59,9 @@ module.exports = {
             }
 
             // Assign trainee role
-            const traineeRole = guild.roles.cache.get(config.traineeRoleId);
-            if (traineeRole && !member.roles.cache.has(config.traineeRoleId)) {
+            const traineeRoleId = guildConfigManager.getGuildConfigValue(guild.id, 'traineeRoleId');
+            const traineeRole = traineeRoleId ? guild.roles.cache.get(traineeRoleId) : null;
+            if (traineeRole && !member.roles.cache.has(traineeRoleId)) {
                 await member.roles.add(traineeRole);
             }
 
@@ -113,11 +84,12 @@ module.exports = {
                 .setTimestamp();
 
             // Send notification to private channel
-            const privateChannel = guild.channels.cache.get(config.privateChannelId);
+            const privateChannelId = guildConfigManager.getGuildConfigValue(guild.id, 'privateChannelId');
+            const privateChannel = privateChannelId ? guild.channels.cache.get(privateChannelId) : null;
             if (privateChannel) {
                 await privateChannel.send({ embeds: [embed] });
             } else {
-                console.error(`❌ Private channel not found: ${config.privateChannelId}`);
+                console.error(`❌ Private channel not configured or not found for guild: ${guild.name}`);
             }
 
             // Reply to user
@@ -146,14 +118,32 @@ module.exports = {
     },
 
     formatTimeEST(date) {
-        // Convert to EST (UTC-5)
-        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
-        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(estDate.getUTCDate()).padStart(2, '0');
-        const year = estDate.getUTCFullYear();
-        const hours = String(estDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
-        
-        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
+        try {
+            // **IMPROVED: Validate input date**
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                console.error('Invalid date passed to formatTimeEST:', date);
+                return 'Invalid Date';
+            }
+            
+            // Convert to EST (UTC-5)
+            const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
+            
+            // Validate conversion
+            if (isNaN(estDate.getTime())) {
+                console.error('Error converting date to EST:', date);
+                return 'Date Conversion Error';
+            }
+            
+            const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(estDate.getUTCDate()).padStart(2, '0');
+            const year = estDate.getUTCFullYear();
+            const hours = String(estDate.getUTCHours()).padStart(2, '0');
+            const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
+            
+            return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
+        } catch (error) {
+            console.error('Error in formatTimeEST:', error);
+            return 'Time Format Error';
+        }
     }
 };

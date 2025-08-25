@@ -73,7 +73,18 @@ function getNotamFields() {
  * @returns {string} - The formatted NOTAM
  */
 function generateNotam(data) {
-    const timestamp = new Date().toISOString().substring(11, 16).replace(':', '') + 'z';
+    // **IMPROVED: Enhanced timestamp generation with error handling**
+    let timestamp;
+    try {
+        const now = new Date();
+        if (isNaN(now.getTime())) {
+            throw new Error('Invalid system date');
+        }
+        timestamp = now.toISOString().substring(11, 16).replace(':', '') + 'z';
+    } catch (error) {
+        console.error('Error generating NOTAM timestamp:', error);
+        timestamp = 'ERROR-TIME';
+    }
     
     let notam = '';
     

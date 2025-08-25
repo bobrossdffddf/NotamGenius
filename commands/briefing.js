@@ -68,14 +68,32 @@ module.exports = {
     },
 
     formatTimeEST(date) {
-        // Convert to EST (UTC-5)
-        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
-        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(estDate.getUTCDate()).padStart(2, '0');
-        const year = estDate.getUTCFullYear();
-        const hours = String(estDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
-        
-        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
+        try {
+            // **IMPROVED: Validate input date**
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                console.error('Invalid date passed to formatTimeEST:', date);
+                return 'Invalid Date';
+            }
+            
+            // Convert to EST (UTC-5)
+            const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
+            
+            // Validate conversion
+            if (isNaN(estDate.getTime())) {
+                console.error('Error converting date to EST:', date);
+                return 'Date Conversion Error';
+            }
+            
+            const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(estDate.getUTCDate()).padStart(2, '0');
+            const year = estDate.getUTCFullYear();
+            const hours = String(estDate.getUTCHours()).padStart(2, '0');
+            const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
+            
+            return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
+        } catch (error) {
+            console.error('Error in formatTimeEST:', error);
+            return 'Time Format Error';
+        }
     }
 };

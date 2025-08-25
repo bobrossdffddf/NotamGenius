@@ -221,6 +221,14 @@ client.on(Events.InteractionCreate, async interaction => {
                     await command.handleJobSelection(interaction, operationId);
                 }
             }
+            // Handle public job selection dropdowns (NEW FEATURE)
+            else if (interaction.customId.startsWith('public_job_select_')) {
+                const operationId = interaction.customId.replace('public_job_select_', '');
+                const command = interaction.client.commands.get('operation');
+                if (command && command.handlePublicJobSelection) {
+                    await command.handlePublicJobSelection(interaction, operationId);
+                }
+            }
             // Handle assignment removal dropdowns
             else if (interaction.customId.startsWith('select_remove_')) {
                 const command = interaction.client.commands.get('operation');

@@ -1,9 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
+const { guildConfigManager } = require('../config/guild-config');
 
 class RosterUpdater {
     constructor(client) {
         this.client = client;
-        this.rosterChannelId = '1408854809888690288';
         this.updateInterval = 2 * 60 * 1000; // 2 minutes (more frequent)
         this.lastMessageId = null;
         this.lastUpdateTime = 0; // Track last update time
@@ -23,13 +23,31 @@ class RosterUpdater {
 
     async updateRoster() {
         try {
-            const channel = await this.client.channels.fetch(this.rosterChannelId);
-            if (!channel) {
-                console.error('❌ Roster channel not found');
+            // Update rosters for all guilds where the bot is present
+            for (const guild of this.client.guilds.cache.values()) {
+                await this.updateGuildRoster(guild);
+            }
+        } catch (error) {
+            console.error('❌ Error updating rosters:', error);
+        }
+    }
+
+    async updateGuildRoster(guild) {
+        try {
+            // Auto-discover or get guild configuration
+            await guildConfigManager.autoDiscoverGuildConfig(guild);
+            const rosterChannelId = guildConfigManager.getGuildConfigValue(guild.id, 'rosterChannelId');
+            
+            if (!rosterChannelId) {
+                // Skip guilds without configured roster channels
                 return;
             }
-
-            const guild = channel.guild;
+            
+            const channel = guild.channels.cache.get(rosterChannelId);
+            if (!channel) {
+                console.error(`❌ Roster channel not found in guild: ${guild.name}`);
+                return;
+            }
             
             // Fetch all guild members to ensure cache is populated
             try {
@@ -39,17 +57,28 @@ class RosterUpdater {
                 // Continue with cached members if fetch fails
             }
             
-            // Define certification roles
-            const certificationRoles = {
-                'ATC Certified': '1408995322021154846',
-                'USAF | Air Force One Certified': '1408942834060361740', 
-                'USMC | Marine One Certified': '1408943018991423571',
-                'Ground Operations Certified': '1408995373455904789',
-                'F-22 Certified': '1409300377463165079',
-                'F-35 Certified': '1409300434967072888',
-                'F-16 Certified': '1409300512062574663',
-                'Trainee': '1408854677784887449'
-            };
+            // Get certification roles from guild configuration
+            const certificationRoles_apply = guildConfigManager.getGuildConfigValue(guild.id, 'certificationRoles_apply', {});
+            const traineeRoleId = guildConfigManager.getGuildConfigValue(guild.id, 'traineeRoleId');
+            
+            // Build certification roles map for roster display
+            const certificationRoles = {};
+            for (const [key, config] of Object.entries(certificationRoles_apply)) {
+                if (config.roleId) {
+                    certificationRoles[config.name] = config.roleId;
+                }
+            }
+            
+            // Add trainee role if configured
+            if (traineeRoleId) {
+                certificationRoles['Trainee'] = traineeRoleId;
+            }
+            
+            // If no roles are configured, try to find some automatically
+            if (Object.keys(certificationRoles).length === 0) {
+                console.warn(`⚠️ No certification roles configured for guild: ${guild.name}`);
+                return;
+            }
 
             // Purge channel before updating
             try {

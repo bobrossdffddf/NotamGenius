@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { checkAdminPermissions } = require('../utils/permissions');
+const { guildConfigManager } = require('../config/guild-config');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -9,118 +10,281 @@ const activeOperations = new Map();
 // Store operation scheduling data temporarily
 const operationSchedules = new Map();
 
-// Target role ID for operation notifications - ALL OPERATIONS USE THIS ROLE
-const TARGET_ROLE_ID = '1407780166754766910';
-
-// Operation details channel ID
-const OPERATION_DETAILS_CHANNEL_ID = '1403915496256176148';
-
-// Certification role IDs
-const CERTIFICATION_ROLES = {
-    'F-22': '1409300377463165079',
-    'F-16': '1409300512062574663',
-    'F-35': '1409300434967072888'
-};
-
 // Data persistence paths
 const ACTIVE_OPERATIONS_FILE = path.join(__dirname, '..', 'data', 'active-operations.json');
 const SCHEDULED_OPERATIONS_FILE = path.join(__dirname, '..', 'data', 'scheduled-operations.json');
 
-// Persistence functions
+// **NEW: Backup file paths for data safety**
+const ACTIVE_OPERATIONS_BACKUP = path.join(__dirname, '..', 'data', 'active-operations.backup.json');
+const SCHEDULED_OPERATIONS_BACKUP = path.join(__dirname, '..', 'data', 'scheduled-operations.backup.json');
+const DATA_DIR = path.join(__dirname, '..', 'data');
+
+// **IMPROVED: Enhanced persistence functions with backup and atomic operations**
+async function ensureDataDirectory() {
+    try {
+        await fs.mkdir(DATA_DIR, { recursive: true });
+    } catch (error) {
+        console.error('❌ Error creating data directory:', error);
+        throw error;
+    }
+}
+
 async function saveOperations() {
     try {
+        // Ensure data directory exists
+        await ensureDataDirectory();
+        
+        console.log('💾 Starting operations data save...');
+        
         const activeOpsData = {};
         const scheduledOpsData = {};
         
-        // Convert Maps to objects for JSON storage
-        for (const [id, op] of activeOperations) {
-            const serializedOp = { ...op };
-            // Convert Maps to objects
-            if (op.responses) {
-                serializedOp.responses = Object.fromEntries(op.responses);
+        // **Data validation and serialization**
+        try {
+            // Convert Maps to objects for JSON storage with validation
+            for (const [id, op] of activeOperations) {
+                if (!id || !op) {
+                    console.warn(`⚠️ Skipping invalid active operation: ${id}`);
+                    continue;
+                }
+                
+                const serializedOp = { ...op };
+                // Convert Maps to objects with validation
+                if (op.responses instanceof Map) {
+                    serializedOp.responses = Object.fromEntries(op.responses);
+                } else {
+                    serializedOp.responses = {};
+                }
+                if (op.jobAssignments instanceof Map) {
+                    serializedOp.jobAssignments = Object.fromEntries(op.jobAssignments);
+                } else {
+                    serializedOp.jobAssignments = {};
+                }
+                activeOpsData[id] = serializedOp;
             }
-            if (op.jobAssignments) {
-                serializedOp.jobAssignments = Object.fromEntries(op.jobAssignments);
+            
+            for (const [id, op] of operationSchedules) {
+                if (!id || !op) {
+                    console.warn(`⚠️ Skipping invalid scheduled operation: ${id}`);
+                    continue;
+                }
+                
+                const serializedOp = { ...op };
+                if (op.responses instanceof Map) {
+                    serializedOp.responses = Object.fromEntries(op.responses);
+                } else {
+                    serializedOp.responses = {};
+                }
+                if (op.jobAssignments instanceof Map) {
+                    serializedOp.jobAssignments = Object.fromEntries(op.jobAssignments);
+                } else {
+                    serializedOp.jobAssignments = {};
+                }
+                scheduledOpsData[id] = serializedOp;
             }
-            activeOpsData[id] = serializedOp;
+        } catch (error) {
+            console.error('❌ Error serializing operations data:', error);
+            throw error;
         }
         
-        for (const [id, op] of operationSchedules) {
-            const serializedOp = { ...op };
-            if (op.responses) {
-                serializedOp.responses = Object.fromEntries(op.responses);
-            }
-            if (op.jobAssignments) {
-                serializedOp.jobAssignments = Object.fromEntries(op.jobAssignments);
-            }
-            scheduledOpsData[id] = serializedOp;
-        }
+        // **Atomic file operations with backups**
+        await saveFileWithBackup(ACTIVE_OPERATIONS_FILE, ACTIVE_OPERATIONS_BACKUP, activeOpsData);
+        await saveFileWithBackup(SCHEDULED_OPERATIONS_FILE, SCHEDULED_OPERATIONS_BACKUP, scheduledOpsData);
         
-        await fs.writeFile(ACTIVE_OPERATIONS_FILE, JSON.stringify(activeOpsData, null, 2));
-        await fs.writeFile(SCHEDULED_OPERATIONS_FILE, JSON.stringify(scheduledOpsData, null, 2));
-        
-        console.log('💾 Operations data saved to disk');
+        console.log(`✅ Operations data saved successfully (${activeOperations.size} active, ${operationSchedules.size} scheduled)`);
     } catch (error) {
-        console.error('❌ Error saving operations:', error);
+        console.error('❌ Critical error saving operations:', error);
+        // Don't throw here to prevent cascading failures
+    }
+}
+
+async function saveFileWithBackup(filePath, backupPath, data) {
+    const tempPath = `${filePath}.tmp`;
+    
+    try {
+        // **Create backup of existing file if it exists**
+        try {
+            await fs.access(filePath);
+            await fs.copyFile(filePath, backupPath);
+            console.log(`📋 Created backup: ${path.basename(backupPath)}`);
+        } catch (error) {
+            if (error.code !== 'ENOENT') {
+                console.warn(`⚠️ Could not create backup for ${path.basename(filePath)}:`, error.message);
+            }
+        }
+        
+        // **Atomic write using temporary file**
+        const jsonData = JSON.stringify(data, null, 2);
+        
+        // Validate JSON before writing
+        try {
+            JSON.parse(jsonData);
+        } catch (error) {
+            throw new Error(`Invalid JSON data for ${path.basename(filePath)}: ${error.message}`);
+        }
+        
+        // Write to temporary file first
+        await fs.writeFile(tempPath, jsonData, 'utf8');
+        
+        // Verify the temporary file was written correctly
+        const written = await fs.readFile(tempPath, 'utf8');
+        const parsed = JSON.parse(written);
+        
+        if (Object.keys(parsed).length !== Object.keys(data).length) {
+            throw new Error(`Data verification failed for ${path.basename(filePath)}`);
+        }
+        
+        // Atomic move from temp to final location
+        await fs.rename(tempPath, filePath);
+        
+        console.log(`💾 Saved ${path.basename(filePath)} (${Object.keys(data).length} entries)`);
+        
+    } catch (error) {
+        // Clean up temp file on error
+        try {
+            await fs.unlink(tempPath);
+        } catch (cleanupError) {
+            // Ignore cleanup errors
+        }
+        
+        console.error(`❌ Error saving ${path.basename(filePath)}:`, error.message);
+        throw error;
     }
 }
 
 async function loadOperations() {
+    console.log('📁 Loading operations data from disk...');
+    
     try {
-        // Load active operations
-        try {
-            const activeData = await fs.readFile(ACTIVE_OPERATIONS_FILE, 'utf8');
-            const activeOpsData = JSON.parse(activeData);
-            
-            for (const [id, op] of Object.entries(activeOpsData)) {
-                // Restore Maps from objects
-                if (op.responses) {
-                    op.responses = new Map(Object.entries(op.responses));
-                } else {
-                    op.responses = new Map();
+        await ensureDataDirectory();
+        
+        // Load active operations with recovery
+        await loadFileWithRecovery(
+            ACTIVE_OPERATIONS_FILE, 
+            ACTIVE_OPERATIONS_BACKUP, 
+            'active operations',
+            (data) => {
+                for (const [id, op] of Object.entries(data)) {
+                    if (!id || !op) {
+                        console.warn(`⚠️ Skipping invalid active operation: ${id}`);
+                        continue;
+                    }
+                    
+                    // Restore Maps from objects with validation
+                    try {
+                        op.responses = op.responses ? new Map(Object.entries(op.responses)) : new Map();
+                        op.jobAssignments = op.jobAssignments ? new Map(Object.entries(op.jobAssignments)) : new Map();
+                        activeOperations.set(id, op);
+                    } catch (error) {
+                        console.error(`❌ Error restoring active operation ${id}:`, error.message);
+                    }
                 }
-                if (op.jobAssignments) {
-                    op.jobAssignments = new Map(Object.entries(op.jobAssignments));
-                } else {
-                    op.jobAssignments = new Map();
+                console.log(`✅ Loaded ${activeOperations.size} active operations`);
+            }
+        );
+        
+        // Load scheduled operations with recovery
+        await loadFileWithRecovery(
+            SCHEDULED_OPERATIONS_FILE, 
+            SCHEDULED_OPERATIONS_BACKUP, 
+            'scheduled operations',
+            (data) => {
+                for (const [id, op] of Object.entries(data)) {
+                    if (!id || !op) {
+                        console.warn(`⚠️ Skipping invalid scheduled operation: ${id}`);
+                        continue;
+                    }
+                    
+                    // Restore Maps from objects with validation
+                    try {
+                        op.responses = op.responses ? new Map(Object.entries(op.responses)) : new Map();
+                        op.jobAssignments = op.jobAssignments ? new Map(Object.entries(op.jobAssignments)) : new Map();
+                        operationSchedules.set(id, op);
+                    } catch (error) {
+                        console.error(`❌ Error restoring scheduled operation ${id}:`, error.message);
+                    }
                 }
-                activeOperations.set(id, op);
+                console.log(`✅ Loaded ${operationSchedules.size} scheduled operations`);
             }
-            
-            console.log(`📁 Loaded ${activeOperations.size} active operations from disk`);
-        } catch (error) {
-            if (error.code !== 'ENOENT') {
-                console.error('❌ Error loading active operations:', error);
-            }
+        );
+        
+        console.log('✅ All operations data loaded successfully');
+        
+    } catch (error) {
+        console.error('❌ Critical error in loadOperations:', error);
+    }
+}
+
+async function loadFileWithRecovery(mainPath, backupPath, description, processData) {
+    let data = null;
+    let usingBackup = false;
+    
+    // **Try loading main file first**
+    try {
+        const rawData = await fs.readFile(mainPath, 'utf8');
+        data = JSON.parse(rawData);
+        
+        // **Validate loaded data**
+        if (typeof data !== 'object' || data === null) {
+            throw new Error('Invalid data format: expected object');
         }
         
-        // Load scheduled operations
-        try {
-            const scheduledData = await fs.readFile(SCHEDULED_OPERATIONS_FILE, 'utf8');
-            const scheduledOpsData = JSON.parse(scheduledData);
+        console.log(`📁 Loaded ${description} from main file`);
+        
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            console.log(`📁 No existing ${description} file found`);
+        } else {
+            console.error(`❌ Error loading ${description} from main file:`, error.message);
             
-            for (const [id, op] of Object.entries(scheduledOpsData)) {
-                if (op.responses) {
-                    op.responses = new Map(Object.entries(op.responses));
-                } else {
-                    op.responses = new Map();
+            // **Try backup file as recovery**
+            try {
+                console.log(`🔄 Attempting to recover ${description} from backup...`);
+                const backupData = await fs.readFile(backupPath, 'utf8');
+                data = JSON.parse(backupData);
+                
+                if (typeof data !== 'object' || data === null) {
+                    throw new Error('Invalid backup data format');
                 }
-                if (op.jobAssignments) {
-                    op.jobAssignments = new Map(Object.entries(op.jobAssignments));
-                } else {
-                    op.jobAssignments = new Map();
+                
+                usingBackup = true;
+                console.log(`✅ Successfully recovered ${description} from backup`);
+                
+                // **Restore main file from backup**
+                try {
+                    await fs.copyFile(backupPath, mainPath);
+                    console.log(`🔄 Restored main ${description} file from backup`);
+                } catch (restoreError) {
+                    console.warn(`⚠️ Could not restore main file from backup:`, restoreError.message);
                 }
-                operationSchedules.set(id, op);
-            }
-            
-            console.log(`📁 Loaded ${operationSchedules.size} scheduled operations from disk`);
-        } catch (error) {
-            if (error.code !== 'ENOENT') {
-                console.error('❌ Error loading scheduled operations:', error);
+                
+            } catch (backupError) {
+                if (backupError.code === 'ENOENT') {
+                    console.log(`📁 No backup file found for ${description}`);
+                } else {
+                    console.error(`❌ Error loading ${description} from backup:`, backupError.message);
+                }
+                
+                // **Initialize with empty data as last resort**
+                data = {};
+                console.log(`🆕 Initialized empty ${description} data`);
             }
         }
-    } catch (error) {
-        console.error('❌ Error in loadOperations:', error);
+    }
+    
+    // **Process the loaded data**
+    if (data && Object.keys(data).length > 0) {
+        try {
+            processData(data);
+            
+            if (usingBackup) {
+                // Save the recovered data to ensure consistency
+                console.log(`💾 Saving recovered ${description} data...`);
+                await saveOperations();
+            }
+        } catch (error) {
+            console.error(`❌ Error processing ${description} data:`, error.message);
+        }
     }
 }
 
@@ -326,17 +490,45 @@ module.exports = {
         const timestamp = parseInt(timestampMatch[1]);
         const format = timestampMatch[2];
         
-        // Convert timestamp to readable format for display
-        const date = new Date(timestamp * 1000);
-        const readableTime = date.toLocaleString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long', 
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZoneName: 'short'
-        });
+        // **IMPROVED: Validate timestamp is reasonable (not too far in past/future)**
+        const now = Math.floor(Date.now() / 1000);
+        const oneYearInSeconds = 365 * 24 * 60 * 60;
+        
+        if (timestamp < (now - oneYearInSeconds) || timestamp > (now + oneYearInSeconds)) {
+            await interaction.reply({
+                content: '❌ **Invalid Timestamp Range**\n\nThe timestamp must be within one year of the current date. Please check your timestamp and try again.',
+                flags: 64
+            });
+            return;
+        }
+        
+        // Convert timestamp to readable format for display with error handling
+        let date, readableTime;
+        try {
+            date = new Date(timestamp * 1000);
+            
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                throw new Error('Invalid date');
+            }
+            
+            readableTime = date.toLocaleString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long', 
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short'
+            });
+        } catch (error) {
+            console.error('Error parsing timestamp:', error);
+            await interaction.reply({
+                content: '❌ **Timestamp Parsing Error**\n\nThe provided timestamp could not be converted to a valid date. Please check your timestamp format and try again.',
+                flags: 64
+            });
+            return;
+        }
 
         // Store the timestamp data for use in modal handling
         const tempId = Date.now().toString();
@@ -603,8 +795,21 @@ module.exports = {
                 console.error('Error creating operation infrastructure:', error);
             }
 
+            // Get guild configuration
+            const guildConfig = await guildConfigManager.autoDiscoverGuildConfig(interaction.guild);
+            const targetRoleId = guildConfigManager.getGuildConfigValue(interaction.guild.id, 'targetRoleId');
+            const operationDetailsChannelId = guildConfigManager.getGuildConfigValue(interaction.guild.id, 'operationDetailsChannelId');
+            const certificationRoles = guildConfigManager.getGuildConfigValue(interaction.guild.id, 'certificationRoles', {});
+
+            if (!targetRoleId) {
+                await interaction.editReply({
+                    content: '❌ **Configuration Error**: No target role configured for operations. An administrator needs to set up the bot configuration first.'
+                });
+                return;
+            }
+
             // Find target role
-            const targetRole = interaction.guild.roles.cache.get(TARGET_ROLE_ID);
+            const targetRole = interaction.guild.roles.cache.get(targetRoleId);
             if (!targetRole) {
                 await interaction.editReply({
                     content: '❌ **Error**: Target role not found. Please check the role configuration.'
@@ -612,7 +817,7 @@ module.exports = {
                 return;
             }
 
-            console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
+            console.log(`🔍 Target role "${targetRole.name}" (${targetRoleId}) found`);
 
             // Simple approach: get all members with the role (Discord handles offline/online automatically)
             const membersWithRole = targetRole.members;
@@ -751,7 +956,7 @@ module.exports = {
             await saveOperations();
 
             // Post operation details to the specified channel
-            const detailsChannel = interaction.guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+            const detailsChannel = operationDetailsChannelId ? interaction.guild.channels.cache.get(operationDetailsChannelId) : null;
             if (detailsChannel) {
                 try {
                     // Post the consolidated NOTAM to the channel
@@ -951,10 +1156,23 @@ module.exports = {
             // Post briefing in info channel
             await infoChannel.send({ embeds: [briefingEmbed] });
 
-            // Schedule operation end check
-            setTimeout(async () => {
-                await this.checkOperationEnd(operationId);
-            }, duration * 60 * 60 * 1000);
+            // **IMPROVED: Schedule operation end check with validation**
+            const timeoutDuration = duration * 60 * 60 * 1000;
+            
+            // Validate timeout duration (max 2147483647ms = ~24.8 days)
+            if (timeoutDuration > 2147483647) {
+                console.warn(`⚠️ Operation duration too long for setTimeout: ${duration} hours. Using alternative scheduling.`);
+                // For very long operations, could implement a different scheduling mechanism
+                // For now, we'll still create the operation but without the auto-end timer
+            } else {
+                setTimeout(async () => {
+                    try {
+                        await this.checkOperationEnd(operationId);
+                    } catch (error) {
+                        console.error(`❌ Error in operation end check for ${operationId}:`, error);
+                    }
+                }, timeoutDuration);
+            }
 
             await interaction.editReply({
                 content: `✅ **Operation ${operationName} has been initiated!**\n\n` +
@@ -1177,7 +1395,8 @@ module.exports = {
         if (operation.detailsMessageId) {
             try {
                 const guild = await global.client.guilds.fetch(operation.guildId);
-                const detailsChannel = guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+                const operationDetailsChannelId = guildConfigManager.getGuildConfigValue(operation.guildId, 'operationDetailsChannelId');
+                const detailsChannel = operationDetailsChannelId ? guild.channels.cache.get(operationDetailsChannelId) : null;
                 if (detailsChannel) {
                     const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
                     const originalEmbed = detailsMessage.embeds[0];
@@ -1326,8 +1545,9 @@ module.exports = {
                 }
 
                 // Also check for certification roles and add if user has them
-                for (const [certName, roleId] of Object.entries(CERTIFICATION_ROLES)) {
-                    if (selectedJob.includes(certName) && member.roles.cache.has(roleId)) {
+                const certificationRoles = guildConfigManager.getGuildConfigValue(operation.guildId, 'certificationRoles', {});
+                for (const [certName, roleId] of Object.entries(certificationRoles)) {
+                    if (roleId && selectedJob.includes(certName) && member.roles.cache.has(roleId)) {
                         console.log(`✅ User ${member.user.tag} has ${certName} certification for job: ${selectedJob}`);
                     }
                 }
@@ -1393,7 +1613,8 @@ module.exports = {
         if (operation.detailsMessageId) {
             try {
                 const guild = await global.client.guilds.fetch(operation.guildId);
-                const detailsChannel = guild.channels.cache.get(OPERATION_DETAILS_CHANNEL_ID);
+                const operationDetailsChannelId = guildConfigManager.getGuildConfigValue(operation.guildId, 'operationDetailsChannelId');
+                const detailsChannel = operationDetailsChannelId ? guild.channels.cache.get(operationDetailsChannelId) : null;
                 if (detailsChannel) {
                     const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
                     const originalEmbed = detailsMessage.embeds[0];
@@ -1484,7 +1705,7 @@ module.exports = {
                 .setCustomId('edit_details_input')
                 .setLabel('Operation Details')
                 .setStyle(TextInputStyle.Paragraph)
-                .setValue(operation.details || 'No details provided')
+                .setValue(operation.details || operation.objective || 'No details provided')
                 .setRequired(true)
                 .setMaxLength(1500);
 
@@ -1492,7 +1713,7 @@ module.exports = {
                 .setCustomId('edit_leader_input')
                 .setLabel('Operation Leader')
                 .setStyle(TextInputStyle.Short)
-                .setValue(operation.leader || 'Unknown')
+                .setValue(operation.leader || operation.commander || 'Unknown')
                 .setRequired(true)
                 .setMaxLength(100);
 
@@ -1610,6 +1831,96 @@ module.exports = {
         }
     },
 
+    async handlePublicJobSelection(interaction, operationId) {
+        const operation = operationSchedules.get(operationId);
+        
+        if (!operation) {
+            await interaction.reply({
+                content: '❌ **Operation Expired**: This operation is no longer accepting responses.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Parse the selected job from the dropdown value (public_job_index_operationId)
+        const selectedValue = interaction.values[0];
+        const jobIndex = parseInt(selectedValue.split('_')[2]);
+        const selectedJobObj = operation.availableJobs[jobIndex];
+        const selectedJob = selectedJobObj ? selectedJobObj.name : null;
+
+        if (!selectedJob) {
+            await interaction.reply({
+                content: '❌ **Invalid Selection**: The selected position is no longer available.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Check capacity limits
+        const currentCount = Array.from(operation.jobAssignments.values()).filter(assignedJob => assignedJob === selectedJob).length;
+        if (selectedJobObj.maxCount && currentCount >= selectedJobObj.maxCount) {
+            await interaction.reply({
+                content: `❌ **Position Full**: The ${selectedJob} position has reached its maximum capacity (${selectedJobObj.maxCount}).`,
+                flags: 64
+            });
+            return;
+        }
+
+        // Check if user already has a response
+        const previousResponse = operation.responses.get(interaction.user.id);
+        
+        // Update user response with job selection
+        operation.responses.set(interaction.user.id, {
+            response: 'yes',
+            job: selectedJob,
+            username: interaction.user.tag,
+            timestamp: new Date()
+        });
+
+        // Store job assignment
+        operation.jobAssignments.set(interaction.user.id, selectedJob);
+        
+        // Save to disk immediately
+        await saveOperations();
+        
+        console.log(`📢 PUBLIC SIGNUP: ${interaction.user.tag} -> ${selectedJob} for operation ${operation.name}`);
+
+        // Update attending count if this is a new "yes" response
+        if (!previousResponse || previousResponse.response !== 'yes') {
+            operation.attendingCount++;
+        }
+
+        // Give operation role
+        if (operation.operationRoleId) {
+            try {
+                const guild = await global.client.guilds.fetch(operation.guildId);
+                const member = await guild.members.fetch(interaction.user.id);
+                const operationRole = guild.roles.cache.get(operation.operationRoleId);
+                
+                if (operationRole && !member.roles.cache.has(operation.operationRoleId)) {
+                    await member.roles.add(operationRole);
+                    console.log(`✅ Added operation role to ${member.user.tag} via public signup`);
+                }
+            } catch (error) {
+                console.error(`Error adding operation role to ${interaction.user.tag}:`, error.message);
+            }
+        }
+
+        await interaction.reply({
+            content: `✅ **Welcome to the Operation!**\n\n**Operation**: ${operation.name}\n**Your Position**: ${selectedJob}\n**Currently Attending**: ${operation.attendingCount}\n\n🎖️ You have been assigned to the operation and received the operation role. Check your DMs for detailed briefing materials.`,
+            flags: 64
+        });
+
+        console.log(`🎯 Public Job Assignment: ${interaction.user.tag} selected "${selectedJob}" for operation "${operation.name}"`);
+        
+        // Trigger roster update when job assignment changes
+        if (global.rosterUpdater) {
+            await global.rosterUpdater.forceUpdate().catch(err => 
+                console.error('Failed to update roster:', err)
+            );
+        }
+    },
+
     async handleConfirmationButton(interaction) {
         // Check admin permissions
         if (!checkAdminPermissions(interaction.member)) {
@@ -1668,37 +1979,148 @@ module.exports = {
 
             console.log(`📤 Starting DM delivery to ${membersWithRole.size} members...`);
             
-            for (const [memberId, member] of membersWithRole) {
-                try {
-                    await member.send({
-                        content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
-                        embeds: [operationEmbed],
-                        components: [responseRow]
-                    });
-                    console.log(`✅ DM sent successfully to ${member.user.tag}`);
-                    successCount++;
+            // **IMPROVED: Enhanced rate limiting with adaptive delays and batch processing**
+            let baseDelay = 200; // Start with 200ms delay (safer than 100ms)
+            let retryDelay = 1000; // Initial retry delay for rate limits
+            const batchSize = 5; // Process DMs in batches of 5
+            const members = Array.from(membersWithRole.values());
+            
+            for (let i = 0; i < members.length; i += batchSize) {
+                const batch = members.slice(i, i + batchSize);
+                console.log(`📦 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(members.length/batchSize)} (${batch.length} members)`);
+                
+                for (const member of batch) {
+                    let attempts = 0;
+                    const maxAttempts = 3;
                     
-                    // Small delay to prevent rate limiting
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (error) {
-                    console.error(`❌ Failed to send DM to ${member.user.tag}: ${error.message}`);
-                    failCount++;
-                    
-                    // Try to handle common DM errors gracefully
-                    if (error.code === 50007) {
-                        console.log(`   └─ User ${member.user.tag} has DMs disabled`);
-                    } else if (error.code === 50001) {
-                        console.log(`   └─ Missing access to DM ${member.user.tag}`);
+                    while (attempts < maxAttempts) {
+                        try {
+                            await member.send({
+                                content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,
+                                embeds: [operationEmbed],
+                                components: [responseRow]
+                            });
+                            console.log(`✅ DM sent successfully to ${member.user.tag}`);
+                            successCount++;
+                            break; // Success, exit retry loop
+                            
+                        } catch (error) {
+                            attempts++;
+                            
+                            // Handle Discord rate limiting specifically
+                            if (error.code === 429) {
+                                const retryAfter = error.retry_after ? (error.retry_after * 1000) : retryDelay;
+                                console.warn(`⚠️ Rate limited! Waiting ${retryAfter}ms before retry ${attempts}/${maxAttempts} for ${member.user.tag}`);
+                                await new Promise(resolve => setTimeout(resolve, retryAfter));
+                                retryDelay = Math.min(retryDelay * 2, 30000); // Exponential backoff, max 30s
+                                continue; // Retry
+                            }
+                            
+                            // Handle other DM errors
+                            console.error(`❌ Failed to send DM to ${member.user.tag} (attempt ${attempts}/${maxAttempts}): ${error.message}`);
+                            
+                            if (error.code === 50007) {
+                                console.log(`   └─ User ${member.user.tag} has DMs disabled`);
+                                break; // Don't retry for disabled DMs
+                            } else if (error.code === 50001) {
+                                console.log(`   └─ Missing access to DM ${member.user.tag}`);
+                                break; // Don't retry for missing access
+                            }
+                            
+                            // For other errors, retry with increasing delay
+                            if (attempts < maxAttempts) {
+                                const errorDelay = baseDelay * Math.pow(2, attempts);
+                                console.log(`   └─ Retrying in ${errorDelay}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, errorDelay));
+                            } else {
+                                failCount++;
+                                console.log(`   └─ Max attempts reached, giving up on ${member.user.tag}`);
+                            }
+                        }
                     }
+                    
+                    // **Dynamic delay adjustment based on success rate**
+                    const currentSuccessRate = successCount / (successCount + failCount || 1);
+                    if (currentSuccessRate < 0.8) {
+                        baseDelay = Math.min(baseDelay * 1.5, 2000); // Increase delay if success rate < 80%
+                        console.log(`📊 Success rate: ${(currentSuccessRate * 100).toFixed(1)}% - Increasing delay to ${baseDelay}ms`);
+                    } else if (currentSuccessRate > 0.95 && baseDelay > 200) {
+                        baseDelay = Math.max(baseDelay * 0.9, 200); // Decrease delay if success rate > 95%
+                    }
+                    
+                    // Standard delay between DMs
+                    await new Promise(resolve => setTimeout(resolve, baseDelay));
+                }
+                
+                // **Longer delay between batches to be extra safe**
+                if (i + batchSize < members.length) {
+                    console.log(`⏸️ Batch complete. Waiting 2 seconds before next batch...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
             
             console.log(`📊 DM Results: ${successCount} successful, ${failCount} failed`)
 
+            // **NEW FEATURE: POST PUBLIC ANNOUNCEMENT WITH ROLE SELECTION DROPDOWN**
+            try {
+                // Create public announcement embed with role selection
+                const positionsList = operation.availableJobs.map((job, index) => {
+                    const capacity = job.maxCount ? ` (${job.maxCount} slots)` : ' (unlimited)';
+                    return `${index + 1}. ${job.name}${capacity}`;
+                }).join('\n');
+
+                const publicEmbed = new EmbedBuilder()
+                    .setTitle(`🚁 **OPERATION ANNOUNCED: ${operation.name.toUpperCase()}**`)
+                    .setDescription(
+                        `### **${operation.name.toUpperCase()}**\n\n` +
+                        `**👨‍✈️ OPERATION LEADER:** ${operation.leader}\n` +
+                        `**📅 OPERATION TIME:** ${operation.time}\n` +
+                        `**👥 CURRENTLY ATTENDING:** ${operation.attendingCount}\n\n` +
+                        `### **📋 OPERATION DETAILS:**\n${operation.details}\n\n` +
+                        `### **📍 AVAILABLE POSITIONS:**\n${positionsList}\n\n` +
+                        `### **📝 ADDITIONAL NOTES:**\n${operation.notes}\n\n` +
+                        `**🎯 USE THE DROPDOWN BELOW TO SELECT YOUR POSITION AND JOIN!**`
+                    )
+                    .setColor(0x00FF00)
+                    .setTimestamp()
+                    .setFooter({ text: `Operation ID: ${operationId} | Public Signup` });
+
+                // Create role selection dropdown for public announcement
+                const roleOptions = operation.availableJobs.map((job, index) => {
+                    const currentCount = 0; // Start with 0 since it's a new operation
+                    const availability = job.maxCount ? `(0/${job.maxCount} slots)` : '(unlimited slots)';
+                    
+                    return new StringSelectMenuOptionBuilder()
+                        .setLabel(`${job.name} ${availability}`)
+                        .setValue(`public_job_${index}_${operationId}`)
+                        .setDescription(`Join as ${job.name}`)
+                        .setEmoji('🎯');
+                });
+
+                const publicJobSelectMenu = new StringSelectMenuBuilder()
+                    .setCustomId(`public_job_select_${operationId}`)
+                    .setPlaceholder('🎯 Select your position to join this operation')
+                    .addOptions(roleOptions);
+
+                const publicSelectRow = new ActionRowBuilder().addComponents(publicJobSelectMenu);
+
+                // Post public announcement in the current channel
+                await interaction.followUp({
+                    content: `📢 **PUBLIC OPERATION ANNOUNCEMENT**\n<@&${operation.targetRole.id}> - Operation details sent via DM`,
+                    embeds: [publicEmbed],
+                    components: [publicSelectRow]
+                });
+
+                console.log(`📢 Public announcement posted for operation: ${operation.name}`);
+            } catch (error) {
+                console.error('Error posting public announcement:', error);
+                // Continue execution even if public announcement fails
+            }
+
             // Send final confirmation
             const confirmEmbed = new EmbedBuilder()
                 .setTitle('✅ **Operation Scheduled Successfully**')
-                .setDescription(`**${operation.name}** notifications have been sent.`)
+                .setDescription(`**${operation.name}** notifications have been sent and public announcement posted.`)
                 .addFields(
                     { name: '📊 **Delivery Stats**', value: `✅ Sent: ${successCount}\n❌ Failed: ${failCount}\n👥 Total: ${membersWithRole.size}`, inline: true },
                     { name: '🎯 **Target Role**', value: operation.targetRole.name, inline: true },
@@ -1742,16 +2164,64 @@ module.exports = {
             const newLeader = interaction.fields.getTextInputValue('edit_leader_input');
             const newTime = interaction.fields.getTextInputValue('edit_time_input');
 
-            // Update operation data
+            // Update operation data with consistent field names
             operation.details = newDetails;
+            operation.objective = newDetails; // Also update objective field for compatibility
             operation.leader = newLeader;
             operation.time = newTime;
 
             // Save to disk
             await saveOperations();
 
+            // **FIX: UPDATE ALL OPERATION DISPLAYS AFTER EDIT**
+            try {
+                // Update details message if it exists
+                if (operation.detailsMessageId) {
+                    const guild = await global.client.guilds.fetch(operation.guildId);
+                    const operationDetailsChannelId = guildConfigManager.getGuildConfigValue(operation.guildId, 'operationDetailsChannelId');
+                    const detailsChannel = operationDetailsChannelId ? guild.channels.cache.get(operationDetailsChannelId) : null;
+                    
+                    if (detailsChannel) {
+                        try {
+                            const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
+                            
+                            // Rebuild the operation details embed with updated info
+                            const updatedEmbed = new EmbedBuilder()
+                                .setTitle(`🚁 OPERATION ${operation.name.toUpperCase()} - DETAILS UPDATED`)
+                                .setColor(0xFF4500)
+                                .addFields(
+                                    { name: '👤 Operation Leader', value: newLeader, inline: true },
+                                    { name: '📅 Operation Time', value: newTime, inline: true },
+                                    { name: '🔒 Classification', value: operation.classification || 'RESTRICTED', inline: true },
+                                    { name: '🎯 Mission Brief', value: newDetails },
+                                    { name: '📍 Positions', value: operation.availableJobs ? operation.availableJobs.map(job => job.name).join(', ') || 'None specified' : 'None specified' },
+                                    { name: '📝 Additional Directives', value: operation.notes || 'None' },
+                                    { name: '👥 Currently Attending', value: operation.attendingCount?.toString() || '0', inline: true }
+                                )
+                                .setTimestamp()
+                                .setFooter({ text: `Operation ID: ${operationId} | Updated by ${interaction.user.tag}` });
+                            
+                            await detailsMessage.edit({ embeds: [updatedEmbed] });
+                            console.log(`✅ Updated operation details display for: ${operation.name}`);
+                        } catch (messageError) {
+                            console.error('Error updating details message:', messageError);
+                        }
+                    }
+                }
+                
+                // Force roster update if available
+                if (global.rosterUpdater) {
+                    await global.rosterUpdater.forceUpdate().catch(err => 
+                        console.error('Failed to update roster after edit:', err)
+                    );
+                }
+            } catch (error) {
+                console.error('Error updating operation displays:', error);
+                // Continue execution even if display updates fail
+            }
+
             await interaction.reply({
-                content: `✅ **Operation Details Updated!**\n\n**Operation**: ${operation.name}\n**New Leader**: ${newLeader}\n**New Time**: ${newTime}\n\nDetails have been updated successfully.`,
+                content: `✅ **Operation Details Updated!**\n\n**Operation**: ${operation.name}\n**New Leader**: ${newLeader}\n**New Time**: ${newTime}\n\nDetails have been updated successfully and all displays refreshed.`,
                 flags: 64
             });
 
@@ -1783,12 +2253,76 @@ module.exports = {
 
             // Update operation data
             operation.availableJobs = newPositions;
+            
+            // Update existing job assignments if positions changed
+            const validJobNames = newPositions.map(job => job.name);
+            if (operation.jobAssignments) {
+                for (const [userId, assignedJob] of operation.jobAssignments) {
+                    if (!validJobNames.includes(assignedJob)) {
+                        operation.jobAssignments.delete(userId);
+                        console.log(`🔄 Removed invalid job assignment: ${assignedJob} for user ${userId}`);
+                    }
+                }
+            }
 
             // Save to disk
             await saveOperations();
 
+            // **FIX: UPDATE ALL OPERATION DISPLAYS AFTER POSITION EDIT**
+            try {
+                // Update details message if it exists
+                if (operation.detailsMessageId) {
+                    const guild = await global.client.guilds.fetch(operation.guildId);
+                    const operationDetailsChannelId = guildConfigManager.getGuildConfigValue(operation.guildId, 'operationDetailsChannelId');
+                    const detailsChannel = operationDetailsChannelId ? guild.channels.cache.get(operationDetailsChannelId) : null;
+                    
+                    if (detailsChannel) {
+                        try {
+                            const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
+                            
+                            // Rebuild positions list
+                            const positionsText = newPositions.map((job, index) => {
+                                const capacity = job.maxCount ? ` (max: ${job.maxCount})` : ' (unlimited)';
+                                return `${index + 1}. ${job.name}${capacity}`;
+                            }).join('\n') || 'None specified';
+                            
+                            // Rebuild the operation details embed with updated positions
+                            const updatedEmbed = new EmbedBuilder()
+                                .setTitle(`🚁 OPERATION ${operation.name.toUpperCase()} - POSITIONS UPDATED`)
+                                .setColor(0xFF4500)
+                                .addFields(
+                                    { name: '👤 Operation Leader', value: operation.leader || 'Unknown', inline: true },
+                                    { name: '📅 Operation Time', value: operation.time || 'TBD', inline: true },
+                                    { name: '🔒 Classification', value: operation.classification || 'RESTRICTED', inline: true },
+                                    { name: '🎯 Mission Brief', value: operation.details || operation.objective || 'No details' },
+                                    { name: '📍 Available Positions', value: positionsText },
+                                    { name: '📝 Additional Directives', value: operation.notes || 'None' },
+                                    { name: '👥 Currently Attending', value: operation.attendingCount?.toString() || '0', inline: true }
+                                )
+                                .setTimestamp()
+                                .setFooter({ text: `Operation ID: ${operationId} | Updated by ${interaction.user.tag}` });
+                            
+                            await detailsMessage.edit({ embeds: [updatedEmbed] });
+                            console.log(`✅ Updated operation positions display for: ${operation.name}`);
+                        } catch (messageError) {
+                            console.error('Error updating positions message:', messageError);
+                        }
+                    }
+                }
+                
+                // Force roster update if available
+                if (global.rosterUpdater) {
+                    await global.rosterUpdater.forceUpdate().catch(err => 
+                        console.error('Failed to update roster after position edit:', err)
+                    );
+                }
+            } catch (error) {
+                console.error('Error updating operation displays:', error);
+                // Continue execution even if display updates fail
+            }
+
             await interaction.reply({
-                content: `✅ **Positions Updated!**\n\n**Operation**: ${operation.name}\n**New Positions**: ${newPositions.map(job => job.name).join(', ')}\n\nPositions have been updated successfully.`,
+                content: `✅ **Positions Updated!**\n\n**Operation**: ${operation.name}\n**New Positions**: ${newPositions.map(job => job.name).join(', ')}\n\nPositions have been updated successfully and all displays refreshed.`,
                 flags: 64
             });
         }
