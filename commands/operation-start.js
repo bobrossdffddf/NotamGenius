@@ -593,33 +593,24 @@ module.exports = {
 
             console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
 
-            // Get cached members first (online members)
-            const cachedMembersWithRole = targetRole.members;
-            console.log(`👥 Found ${cachedMembersWithRole.size} cached members with role "${targetRole.name}"`);
-
-            // Always try to fetch ALL members to get offline ones too
-            let allMembersWithRole = cachedMembersWithRole;
-            console.log(`🔄 Fetching all guild members to find offline members...`);
+            // Simple approach: get all members with the role (Discord handles offline/online automatically)
+            const membersWithRole = targetRole.members;
+            console.log(`👥 Found ${membersWithRole.size} members with role "${targetRole.name}"`);
             
-            try {
-                // Fetch with a timeout to prevent hanging
-                const fetchPromise = interaction.guild.members.fetch({ time: 10000 });
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Fetch timeout')), 10000)
-                );
-                
-                const fetchedMembers = await Promise.race([fetchPromise, timeoutPromise]);
-                const allRoleMembers = fetchedMembers.filter(member => member.roles.cache.has(TARGET_ROLE_ID));
-                
-                console.log(`✅ After fetching: Found ${allRoleMembers.size} total members with role (including offline)`);
-                allMembersWithRole = allRoleMembers;
-                
-            } catch (error) {
-                console.log(`⚠️ Failed to fetch all members (${error.message}), using cached members only`);
+            // If we don't find members, try a quick fetch without hanging
+            if (membersWithRole.size === 0) {
+                console.log(`🔄 No members found, trying quick fetch...`);
+                try {
+                    await interaction.guild.members.fetch({ limit: 100 });
+                    const refetchedMembers = targetRole.members;
+                    console.log(`✅ After quick fetch: Found ${refetchedMembers.size} members`);
+                } catch (error) {
+                    console.log(`⚠️ Quick fetch failed: ${error.message}`);
+                }
             }
 
-            console.log(`📝 Final member list (${allMembersWithRole.size} members):`);
-            for (const [memberId, member] of allMembersWithRole) {
+            console.log(`📝 Final member list (${membersWithRole.size} members):`);
+            for (const [memberId, member] of membersWithRole) {
                 console.log(`   - ${member.user.tag} (${memberId})`);
             }
 
@@ -686,7 +677,7 @@ module.exports = {
             });
 
             // Store additional data for confirmation
-            operationData.membersWithRole = allMembersWithRole;
+            operationData.membersWithRole = membersWithRole;
             operationData.targetRole = targetRole;
             operationData.responseRow = responseRow;
             operationData.operationEmbed = operationEmbed;
@@ -1605,9 +1596,9 @@ module.exports = {
             const operationEmbed = operation.operationEmbed;
             const responseRow = operation.responseRow;
 
-            console.log(`📤 Starting DM delivery to ${allMembersWithRole.size} members...`);
+            console.log(`📤 Starting DM delivery to ${membersWithRole.size} members...`);
             
-            for (const [memberId, member] of allMembersWithRole) {
+            for (const [memberId, member] of membersWithRole) {
                 try {
                     await member.send({
                         content: `**🚨 URGENT - OPERATIONAL DEPLOYMENT NOTIFICATION**\n**FROM: ${interaction.guild.name} COMMAND**`,

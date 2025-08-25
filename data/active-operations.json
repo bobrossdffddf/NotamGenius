@@ -146,5 +146,23 @@
     "availableJobs": [],
     "jobAssignments": {},
     "responses": {}
+  },
+  "op_1756092834644": {
+    "name": "e",
+    "commander": "848356730256883744",
+    "startTime": 1756092849256,
+    "endTime": null,
+    "duration": null,
+    "objective": "e",
+    "classification": "RESTRICTED",
+    "notes": "None",
+    "roleId": "1409380242102947950",
+    "categoryId": "1409380243218628639",
+    "voiceChannelId": "1409380248847651006",
+    "infoChannelId": "1409380250265190461",
+    "chatChannelId": "1409380257362083886",
+    "guildId": "1403618918928613517",
+    "active": true,
+    "scheduled": true
   }
 }
