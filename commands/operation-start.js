@@ -10,7 +10,7 @@ const activeOperations = new Map();
 const operationSchedules = new Map();
 
 // Target role ID for operation notifications - ALL OPERATIONS USE THIS ROLE
-const TARGET_ROLE_ID = '1409027687736938537';
+const TARGET_ROLE_ID = '1407780166754766910';
 
 // Operation details channel ID
 const OPERATION_DETAILS_CHANNEL_ID = '1403915496256176148';
