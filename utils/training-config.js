@@ -109,35 +109,47 @@ const CERT_LEVELS = {
 };
 
 const SESSION_TYPES = {
-    'ground-school': { 
-        name: 'Ground School',
-        duration: 1, 
-        maxStudents: 10,
-        description: 'Classroom-style training sessions'
-    },
-    'simulator': { 
-        name: 'Simulator Training',
-        duration: 2, 
-        maxStudents: 4,
-        description: 'Flight simulator training'
-    },
-    'flight-training': { 
-        name: 'Flight Training',
+    'F-22': { 
+        name: 'F-22 Raptor Training',
         duration: 3, 
         maxStudents: 2,
-        description: 'Actual aircraft flight training'
+        description: 'F-22 Raptor aircraft training'
     },
-    'weapons-training': {
-        name: 'Weapons Training',
-        duration: 2,
+    'F-35': { 
+        name: 'F-35 Lightning II Training',
+        duration: 3, 
+        maxStudents: 2,
+        description: 'F-35 Lightning II aircraft training'
+    },
+    'F-16': { 
+        name: 'F-16 Fighting Falcon Training',
+        duration: 2, 
+        maxStudents: 4,
+        description: 'F-16 Fighting Falcon aircraft training'
+    },
+    'ATC': { 
+        name: 'Air Traffic Control Training',
+        duration: 2, 
         maxStudents: 6,
-        description: 'Weapons systems and tactics'
+        description: 'Air Traffic Control operations training'
     },
-    'emergency-procedures': {
-        name: 'Emergency Procedures',
-        duration: 1.5,
+    'AF1': {
+        name: 'Air Force One Training',
+        duration: 4,
+        maxStudents: 2,
+        description: 'Air Force One operations training'
+    },
+    'Marine-1': {
+        name: 'Marine One Training',
+        duration: 3,
+        maxStudents: 2,
+        description: 'Marine One helicopter operations training'
+    },
+    'Ground-Operations': {
+        name: 'Ground Operations Training',
+        duration: 2,
         maxStudents: 8,
-        description: 'Emergency response training'
+        description: 'Ground crew and operations training'
     }
 };
 
@@ -212,6 +224,8 @@ function canAwardCertification(userCerts, targetCert) {
     return { canAward: true };
 }
 
+const TRAINER_ROLE_ID = '1408854630816813167';
+
 function getInstructorLevel(userCerts) {
     if (userCerts.some(cert => cert.cert_type === 'senior-instructor')) {
         return 'senior-instructor';
@@ -240,14 +254,20 @@ function canUserInstruct(userCerts, certType) {
     return false;
 }
 
+function hasTrainerRole(member) {
+    return member.roles.cache.has(TRAINER_ROLE_ID);
+}
+
 module.exports = {
     CERTIFICATIONS,
     CERT_LEVELS,
     SESSION_TYPES,
     COMPETITION_TYPES,
+    TRAINER_ROLE_ID,
     getAllCertifications,
     getCertificationInfo,
     canAwardCertification,
     getInstructorLevel,
-    canUserInstruct
+    canUserInstruct,
+    hasTrainerRole
 };

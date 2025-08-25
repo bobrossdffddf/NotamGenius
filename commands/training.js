@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { checkPermissions } = require('../utils/permissions');
 const TrainingDatabase = require('../utils/training-database');
-const { getAllCertifications, getCertificationInfo, CERT_LEVELS, SESSION_TYPES } = require('../utils/training-config');
+const { getAllCertifications, getCertificationInfo, CERT_LEVELS, SESSION_TYPES, hasTrainerRole } = require('../utils/training-config');
 
 // Initialize database
 let trainingDB;
@@ -74,40 +74,6 @@ module.exports = {
                                 .setDescription('User to view progress for (defaults to yourself)')
                                 .setRequired(false))))
         .addSubcommandGroup(group =>
-            group.setName('exam')
-                .setDescription('Written examination system')
-                .addSubcommand(subcommand =>
-                    subcommand.setName('start')
-                        .setDescription('Begin a written examination')
-                        .addStringOption(option =>
-                            option.setName('certification')
-                                .setDescription('Certification to take exam for')
-                                .setRequired(true)
-                                .addChoices(
-                                    { name: 'F-22 Raptor', value: 'F-22' },
-                                    { name: 'F-16 Fighting Falcon', value: 'F-16' },
-                                    { name: 'F-35 Lightning II', value: 'F-35' },
-                                    { name: 'A-10 Thunderbolt II', value: 'A-10' },
-                                    { name: 'KC-135 Stratotanker', value: 'KC-135' },
-                                    { name: 'C-130 Hercules', value: 'C-130' },
-                                    { name: 'Flight Lead', value: 'flight-lead' },
-                                    { name: 'Mission Commander', value: 'mission-commander' },
-                                    { name: 'Air Traffic Controller', value: 'atc' },
-                                    { name: 'Ground Crew', value: 'ground-crew' },
-                                    { name: 'Formation Flying', value: 'formation-flying' }
-                                )))
-                .addSubcommand(subcommand =>
-                    subcommand.setName('results')
-                        .setDescription('View exam results')
-                        .addUserOption(option =>
-                            option.setName('user')
-                                .setDescription('User to view results for (defaults to yourself)')
-                                .setRequired(false))
-                        .addStringOption(option =>
-                            option.setName('certification')
-                                .setDescription('Specific certification results')
-                                .setRequired(false))))
-        .addSubcommandGroup(group =>
             group.setName('schedule')
                 .setDescription('Training session scheduling')
                 .addSubcommand(subcommand =>
@@ -118,11 +84,13 @@ module.exports = {
                                 .setDescription('Type of training session')
                                 .setRequired(true)
                                 .addChoices(
-                                    { name: 'Ground School', value: 'ground-school' },
-                                    { name: 'Simulator Training', value: 'simulator' },
-                                    { name: 'Flight Training', value: 'flight-training' },
-                                    { name: 'Weapons Training', value: 'weapons-training' },
-                                    { name: 'Emergency Procedures', value: 'emergency-procedures' }
+                                    { name: 'F-22 Raptor Training', value: 'F-22' },
+                                    { name: 'F-35 Lightning II Training', value: 'F-35' },
+                                    { name: 'F-16 Fighting Falcon Training', value: 'F-16' },
+                                    { name: 'Air Traffic Control Training', value: 'ATC' },
+                                    { name: 'Air Force One Training', value: 'AF1' },
+                                    { name: 'Marine One Training', value: 'Marine-1' },
+                                    { name: 'Ground Operations Training', value: 'Ground-Operations' }
                                 ))
                         .addStringOption(option =>
                             option.setName('date')
@@ -165,11 +133,13 @@ module.exports = {
                                 .setDescription('Type of training')
                                 .setRequired(true)
                                 .addChoices(
-                                    { name: 'Ground School', value: 'ground-school' },
-                                    { name: 'Simulator', value: 'simulator' },
-                                    { name: 'Flight Training', value: 'flight-training' },
-                                    { name: 'Weapons Training', value: 'weapons-training' },
-                                    { name: 'Emergency Procedures', value: 'emergency-procedures' }
+                                    { name: 'F-22 Raptor Training', value: 'F-22' },
+                                    { name: 'F-35 Lightning II Training', value: 'F-35' },
+                                    { name: 'F-16 Fighting Falcon Training', value: 'F-16' },
+                                    { name: 'Air Traffic Control Training', value: 'ATC' },
+                                    { name: 'Air Force One Training', value: 'AF1' },
+                                    { name: 'Marine One Training', value: 'Marine-1' },
+                                    { name: 'Ground Operations Training', value: 'Ground-Operations' }
                                 ))
                         .addNumberOption(option =>
                             option.setName('hours')
@@ -215,9 +185,6 @@ module.exports = {
             group.setName('dashboard')
                 .setDescription('Training dashboard and analytics')
                 .addSubcommand(subcommand =>
-                    subcommand.setName('unit')
-                        .setDescription('Unit readiness overview (commanders only)'))
-                .addSubcommand(subcommand =>
                     subcommand.setName('leaderboard')
                         .setDescription('Training leaderboards'))
                 .addSubcommand(subcommand =>
@@ -244,9 +211,6 @@ module.exports = {
             switch (subcommandGroup) {
                 case 'cert':
                     await this.handleCertificationCommands(interaction, subcommand);
-                    break;
-                case 'exam':
-                    await this.handleExamCommands(interaction, subcommand);
                     break;
                 case 'schedule':
                     await this.handleScheduleCommands(interaction, subcommand);
@@ -340,13 +304,10 @@ module.exports = {
     },
 
     async awardCertification(interaction) {
-        // Check if user is an instructor
-        const userCerts = trainingDB.getUserCertifications(interaction.user.id);
-        const isInstructor = userCerts.some(cert => cert.cert_type.includes('instructor'));
-        
-        if (!isInstructor && !checkPermissions(interaction.member, interaction.guild)) {
+        // Check if user has trainer role
+        if (!hasTrainerRole(interaction.member) && !checkPermissions(interaction.member, interaction.guild)) {
             await interaction.reply({ 
-                content: '❌ Only instructors or administrators can award certifications.', 
+                content: '❌ Only trainers or administrators can award certifications.', 
                 ephemeral: true 
             });
             return;
@@ -487,14 +448,6 @@ module.exports = {
         await interaction.reply({ embeds: [embed] });
     },
 
-    // Additional handler methods will be implemented in separate files for modularity
-    async handleExamCommands(interaction, subcommand) {
-        // This will be handled by the exam system
-        await interaction.reply({ 
-            content: '🚧 Exam system coming soon! Use `/training-exam` commands for now.', 
-            ephemeral: true 
-        });
-    },
 
     async handleScheduleCommands(interaction, subcommand) {
         // This will be handled by the scheduling system
@@ -516,13 +469,10 @@ module.exports = {
     },
 
     async logTrainingHours(interaction) {
-        // Check if user is an instructor
-        const userCerts = trainingDB.getUserCertifications(interaction.user.id);
-        const isInstructor = userCerts.some(cert => cert.cert_type.includes('instructor'));
-        
-        if (!isInstructor && !checkPermissions(interaction.member, interaction.guild)) {
+        // Check if user has trainer role
+        if (!hasTrainerRole(interaction.member) && !checkPermissions(interaction.member, interaction.guild)) {
             await interaction.reply({ 
-                content: '❌ Only instructors or administrators can log training hours.', 
+                content: '❌ Only trainers or administrators can log training hours.', 
                 ephemeral: true 
             });
             return;
@@ -616,13 +566,10 @@ module.exports = {
     },
 
     async addTrainerNote(interaction) {
-        // Check if user is an instructor
-        const userCerts = trainingDB.getUserCertifications(interaction.user.id);
-        const isInstructor = userCerts.some(cert => cert.cert_type.includes('instructor'));
-        
-        if (!isInstructor && !checkPermissions(interaction.member, interaction.guild)) {
+        // Check if user has trainer role
+        if (!hasTrainerRole(interaction.member) && !checkPermissions(interaction.member, interaction.guild)) {
             await interaction.reply({ 
-                content: '❌ Only instructors or administrators can add trainer notes.', 
+                content: '❌ Only trainers or administrators can add trainer notes.', 
                 ephemeral: true 
             });
             return;
@@ -670,12 +617,11 @@ module.exports = {
     async viewTrainerNotes(interaction) {
         const targetUser = interaction.options.getUser('user');
         
-        // Check permissions - instructors can view notes for their students, users can't view others' notes
-        const userCerts = trainingDB.getUserCertifications(interaction.user.id);
-        const isInstructor = userCerts.some(cert => cert.cert_type.includes('instructor'));
+        // Check permissions - trainers can view notes for their students, users can't view others' notes
+        const isTrainer = hasTrainerRole(interaction.member);
         const isAdmin = checkPermissions(interaction.member, interaction.guild);
         
-        if (targetUser.id !== interaction.user.id && !isInstructor && !isAdmin) {
+        if (targetUser.id !== interaction.user.id && !isTrainer && !isAdmin) {
             await interaction.reply({ 
                 content: '❌ You can only view your own training notes.', 
                 ephemeral: true 
@@ -714,9 +660,6 @@ module.exports = {
 
     async handleDashboardCommands(interaction, subcommand) {
         switch (subcommand) {
-            case 'unit':
-                await this.showUnitDashboard(interaction);
-                break;
             case 'leaderboard':
                 await this.showLeaderboard(interaction);
                 break;
@@ -724,42 +667,6 @@ module.exports = {
                 await this.showPersonalDashboard(interaction);
                 break;
         }
-    },
-
-    async showUnitDashboard(interaction) {
-        // Check if user has commander permissions
-        if (!checkPermissions(interaction.member, interaction.guild)) {
-            await interaction.reply({ 
-                content: '❌ Only commanders can view the unit dashboard.', 
-                ephemeral: true 
-            });
-            return;
-        }
-
-        const readiness = trainingDB.getUnitReadiness();
-
-        const embed = new EmbedBuilder()
-            .setTitle('🎖️ Unit Readiness Dashboard')
-            .setColor(0x0099FF)
-            .setTimestamp();
-
-        embed.addFields(
-            { name: '👥 Personnel Summary', value: `Total Trained: ${readiness.totalUsers}\nCertified: ${readiness.certifiedUsers}\nReadiness: ${readiness.readinessPercentage}%`, inline: true }
-        );
-
-        if (readiness.certificationCounts.length > 0) {
-            const certText = readiness.certificationCounts.slice(0, 10).map(cert => 
-                `${cert.cert_type}: ${cert.count}`
-            ).join('\n');
-            
-            embed.addFields({
-                name: '📊 Top Certifications',
-                value: certText,
-                inline: true
-            });
-        }
-
-        await interaction.reply({ embeds: [embed] });
     },
 
     async showLeaderboard(interaction) {

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { checkPermissions } = require('../utils/permissions');
 const TrainingDatabase = require('../utils/training-database');
-const { SESSION_TYPES, getInstructorLevel } = require('../utils/training-config');
+const { SESSION_TYPES, hasTrainerRole } = require('../utils/training-config');
 
 // Initialize database
 let trainingDB;
@@ -23,11 +23,13 @@ module.exports = {
                         .setDescription('Type of training session')
                         .setRequired(true)
                         .addChoices(
-                            { name: 'Ground School', value: 'ground-school' },
-                            { name: 'Simulator Training', value: 'simulator' },
-                            { name: 'Flight Training', value: 'flight-training' },
-                            { name: 'Weapons Training', value: 'weapons-training' },
-                            { name: 'Emergency Procedures', value: 'emergency-procedures' }
+                            { name: 'F-22 Raptor Training', value: 'F-22' },
+                            { name: 'F-35 Lightning II Training', value: 'F-35' },
+                            { name: 'F-16 Fighting Falcon Training', value: 'F-16' },
+                            { name: 'Air Traffic Control Training', value: 'ATC' },
+                            { name: 'Air Force One Training', value: 'AF1' },
+                            { name: 'Marine One Training', value: 'Marine-1' },
+                            { name: 'Ground Operations Training', value: 'Ground-Operations' }
                         ))
                 .addStringOption(option =>
                     option.setName('date')
@@ -67,11 +69,13 @@ module.exports = {
                         .setDescription('Filter by session type')
                         .setRequired(false)
                         .addChoices(
-                            { name: 'Ground School', value: 'ground-school' },
-                            { name: 'Simulator Training', value: 'simulator' },
-                            { name: 'Flight Training', value: 'flight-training' },
-                            { name: 'Weapons Training', value: 'weapons-training' },
-                            { name: 'Emergency Procedures', value: 'emergency-procedures' }
+                            { name: 'F-22 Raptor Training', value: 'F-22' },
+                            { name: 'F-35 Lightning II Training', value: 'F-35' },
+                            { name: 'F-16 Fighting Falcon Training', value: 'F-16' },
+                            { name: 'Air Traffic Control Training', value: 'ATC' },
+                            { name: 'Air Force One Training', value: 'AF1' },
+                            { name: 'Marine One Training', value: 'Marine-1' },
+                            { name: 'Ground Operations Training', value: 'Ground-Operations' }
                         )))
         .addSubcommand(subcommand =>
             subcommand.setName('cancel')
@@ -137,13 +141,10 @@ module.exports = {
     },
 
     async createSession(interaction) {
-        // Check if user is an instructor
-        const userCerts = trainingDB.getUserCertifications(interaction.user.id);
-        const isInstructor = userCerts.some(cert => cert.cert_type.includes('instructor'));
-        
-        if (!isInstructor && !checkPermissions(interaction.member, interaction.guild)) {
+        // Check if user has trainer role
+        if (!hasTrainerRole(interaction.member) && !checkPermissions(interaction.member, interaction.guild)) {
             await interaction.reply({ 
-                content: '❌ Only instructors or administrators can create training sessions.', 
+                content: '❌ Only trainers or administrators can create training sessions.', 
                 ephemeral: true 
             });
             return;
@@ -370,9 +371,7 @@ module.exports = {
     async cancelSession(interaction) {
         const sessionId = interaction.options.getInteger('session_id');
         
-        // Check if user is an instructor or the session creator
-        const userCerts = trainingDB.getUserCertifications(interaction.user.id);
-        const isInstructor = userCerts.some(cert => cert.cert_type.includes('instructor'));
+        // Check if user has trainer role or is the session creator
         const session = trainingDB.getTrainingSession(sessionId);
         
         if (!session) {
@@ -383,9 +382,9 @@ module.exports = {
             return;
         }
 
-        if (!isInstructor && session.instructor_id !== interaction.user.id && !checkPermissions(interaction.member, interaction.guild)) {
+        if (!hasTrainerRole(interaction.member) && session.instructor_id !== interaction.user.id && !checkPermissions(interaction.member, interaction.guild)) {
             await interaction.reply({ 
-                content: '❌ Only the session instructor, other instructors, or administrators can cancel sessions.', 
+                content: '❌ Only the session instructor, other trainers, or administrators can cancel sessions.', 
                 ephemeral: true 
             });
             return;
