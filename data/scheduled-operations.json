@@ -1124,5 +1124,53 @@
       "color": 16739125,
       "timestamp": "2025-08-25T03:16:53.768Z"
     }
+  },
+  "op_1756091961164": {
+    "name": "Test",
+    "time": "8/25 at 18:30 EST",
+    "details": "Test",
+    "leader": "Test",
+    "availableJobs": [
+      {
+        "name": "Test",
+        "maxCount": null
+      }
+    ],
+    "notes": "None",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": null,
+    "detailsMessageId": null,
+    "categoryId": null,
+    "voiceChannelId": null,
+    "infoChannelId": null,
+    "chatChannelId": null
+  },
+  "op_1756092062028": {
+    "name": "E",
+    "time": "9/25 at 18:30 EST",
+    "details": "E",
+    "leader": "E",
+    "availableJobs": [
+      {
+        "name": "E",
+        "maxCount": null
+      }
+    ],
+    "notes": "E",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": null,
+    "detailsMessageId": null,
+    "categoryId": null,
+    "voiceChannelId": null,
+    "infoChannelId": null,
+    "chatChannelId": null
   }
 }

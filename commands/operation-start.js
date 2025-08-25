@@ -486,7 +486,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    colors: [0xFF6B35],
+                    color: 0xFF6B35,
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -593,30 +593,19 @@ module.exports = {
 
             console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
 
-            // Get all members with the target role, excluding bots
-            const allMembersWithRole = targetRole.members;
-            const membersWithRole = new Map();
-            
-            // Filter out bots from the recipient list
-            for (const [memberId, member] of allMembersWithRole) {
-                if (!member.user.bot) {
-                    membersWithRole.set(memberId, member);
-                }
-            }
+            // Get all members with the target role
+            const membersWithRole = targetRole.members;
 
-            console.log(`👥 Found ${allMembersWithRole.size} total members with role "${targetRole.name}"`);
-            console.log(`👤 Found ${membersWithRole.size} human members (excluding bots)`);
+            console.log(`👥 Found ${membersWithRole.size} members with role "${targetRole.name}"`);
             
-            // Log each human member for debugging
+            // Log each member for debugging
             for (const [memberId, member] of membersWithRole) {
-                const status = member.presence?.status || 'offline';
-                const statusIcon = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
-                console.log(`   - ${member.user.tag} (${memberId}) ${statusIcon} ${status}`);
+                console.log(`   - ${member.user.tag} (${memberId})`);
             }
 
             if (membersWithRole.size === 0) {
                 await interaction.editReply({
-                    content: '❌ **No Valid Recipients**: No human members found with the target role. The role only contains bots or is empty.\n\n**Target Role**: ' + targetRole.name + '\n**Total Members**: ' + allMembersWithRole.size + ' (all bots)\n\nPlease ensure the target role has actual users assigned to it.'
+                    content: '❌ **No Members**: No members found with the target role.'
                 });
                 return;
             }
@@ -805,7 +794,7 @@ module.exports = {
             // Create operation role
             const operationRole = await guild.roles.create({
                 name: roleName,
-                colors: [0xFF4500],
+                color: 0xFF4500,
                 mentionable: true,
                 reason: `Operation ${operationName} role`
             });
