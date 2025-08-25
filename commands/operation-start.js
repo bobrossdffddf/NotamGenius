@@ -593,8 +593,19 @@ module.exports = {
 
             console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
 
-            // Get all members with the target role
-            const membersWithRole = targetRole.members;
+            // Force fetch ALL guild members (including offline ones)
+            console.log(`🔄 Fetching all guild members...`);
+            try {
+                await interaction.guild.members.fetch({ force: true });
+                console.log(`✅ Successfully fetched ${interaction.guild.memberCount} total members`);
+            } catch (error) {
+                console.log(`⚠️ Failed to fetch all members: ${error.message}`);
+            }
+
+            // Now get all members with the target role (should include offline members)
+            const membersWithRole = interaction.guild.members.cache.filter(member => 
+                member.roles.cache.has(TARGET_ROLE_ID)
+            );
 
             console.log(`👥 Found ${membersWithRole.size} members with role "${targetRole.name}"`);
             

@@ -146,5 +146,41 @@
     "availableJobs": [],
     "jobAssignments": {},
     "responses": {}
+  },
+  "op_1756092444230": {
+    "name": "e",
+    "commander": "848356730256883744",
+    "startTime": 1756092447623,
+    "endTime": null,
+    "duration": null,
+    "objective": "e",
+    "classification": "RESTRICTED",
+    "notes": "None",
+    "roleId": "1409378604759912458",
+    "categoryId": "1409378606144159756",
+    "voiceChannelId": "1409378611819053058",
+    "infoChannelId": "1409378613710688266",
+    "chatChannelId": "1409378614700544026",
+    "guildId": "1403618918928613517",
+    "active": true,
+    "scheduled": true
+  },
+  "op_1756092493920": {
+    "name": "e",
+    "commander": "848356730256883744",
+    "startTime": 1756092496703,
+    "endTime": null,
+    "duration": null,
+    "objective": "e",
+    "classification": "RESTRICTED",
+    "notes": "None",
+    "roleId": "1409378813132935259",
+    "categoryId": "1409378814374449213",
+    "voiceChannelId": "1409378819705671722",
+    "infoChannelId": "1409378820670099527",
+    "chatChannelId": "1409378821928521828",
+    "guildId": "1403618918928613517",
+    "active": true,
+    "scheduled": true
   }
 }
