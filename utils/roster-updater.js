@@ -57,24 +57,36 @@ class RosterUpdater {
                 // Continue with cached members if fetch fails
             }
             
-            // Get certification roles from guild configuration
-            const certificationRoles_apply = guildConfigManager.getGuildConfigValue(guild.id, 'certificationRoles_apply', {});
-            const traineeRoleId = guildConfigManager.getGuildConfigValue(guild.id, 'traineeRoleId');
+            // Use specific hardcoded role IDs for ATC24 guild
+            let certificationRoles = {};
             
-            // Build certification roles map for roster display
-            const certificationRoles = {};
-            for (const [key, config] of Object.entries(certificationRoles_apply)) {
-                if (config.roleId) {
-                    certificationRoles[config.name] = config.roleId;
+            if (guild.id === '1403618918928613517') { // ATC24 | USDoD USAF x USMC guild
+                // Use ONLY the specific certified role IDs provided - no auto-discovery
+                certificationRoles = {
+                    'F-22 Certified': '1409300377463165079',
+                    'F-35 Certified': '1409300434967072888', 
+                    'F-16 Certified': '1409300512062574663'
+                };
+                console.log('🎯 Using hardcoded certified role IDs for roster');
+            } else {
+                // For other guilds, use the configuration system
+                const certificationRoles_apply = guildConfigManager.getGuildConfigValue(guild.id, 'certificationRoles_apply', {});
+                const traineeRoleId = guildConfigManager.getGuildConfigValue(guild.id, 'traineeRoleId');
+                
+                // Build certification roles map for roster display
+                for (const [key, config] of Object.entries(certificationRoles_apply)) {
+                    if (config.roleId) {
+                        certificationRoles[config.name] = config.roleId;
+                    }
+                }
+                
+                // Add trainee role if configured
+                if (traineeRoleId) {
+                    certificationRoles['Trainee'] = traineeRoleId;
                 }
             }
             
-            // Add trainee role if configured
-            if (traineeRoleId) {
-                certificationRoles['Trainee'] = traineeRoleId;
-            }
-            
-            // If no roles are configured, try to find some automatically
+            // If no roles are configured, skip
             if (Object.keys(certificationRoles).length === 0) {
                 console.warn(`⚠️ No certification roles configured for guild: ${guild.name}`);
                 return;
