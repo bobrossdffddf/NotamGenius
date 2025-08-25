@@ -9,7 +9,7 @@ const activeOperations = new Map();
 // Store operation scheduling data temporarily
 const operationSchedules = new Map();
 
-// Target role ID for operation notifications
+// Target role ID for operation notifications - ALL OPERATIONS USE THIS ROLE
 const TARGET_ROLE_ID = '1407780166754766910';
 
 // Operation details channel ID
