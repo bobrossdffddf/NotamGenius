@@ -1020,5 +1020,109 @@
       "color": 16739125,
       "timestamp": "2025-08-24T23:57:30.160Z"
     }
+  },
+  "op_1756091811012": {
+    "name": "Test",
+    "time": "8/25 at 18:30 EST",
+    "details": "Test",
+    "leader": "Test",
+    "availableJobs": [
+      {
+        "name": "Test",
+        "maxCount": null
+      }
+    ],
+    "notes": "Test",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": "1409375949090324551",
+    "detailsMessageId": "1409375962428346389",
+    "categoryId": "1409375950642348032",
+    "voiceChannelId": "1409375955146768387",
+    "infoChannelId": "1409375957583925350",
+    "chatChannelId": "1409375959320232087",
+    "membersWithRole": [
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1756012127719,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "1407735322229473491",
+        "avatar": null,
+        "banner": null,
+        "flags": 1,
+        "avatarDecorationData": null,
+        "displayName": "DoD Emergency Alert System",
+        "roles": [
+          "1403940112995319808",
+          "1409027687736938537",
+          "1409041732062019647",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/1407735322229473491/67282ab33c20b53553c9b0fbaafa560d.webp",
+        "displayBannerURL": null,
+        "avatarDecorationURL": null
+      }
+    ],
+    "targetRole": {
+      "guild": "1403618918928613517",
+      "icon": null,
+      "unicodeEmoji": null,
+      "id": "1409027687736938537",
+      "name": "Test role",
+      "color": 0,
+      "colors": {
+        "primaryColor": 0,
+        "secondaryColor": null,
+        "tertiaryColor": null
+      },
+      "hoist": false,
+      "rawPosition": 1,
+      "permissions": "0",
+      "managed": false,
+      "mentionable": false,
+      "flags": 0,
+      "tags": {},
+      "createdTimestamp": 1756008779225
+    },
+    "responseRow": {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "custom_id": "op_response_yes_op_1756091811012",
+          "label": "✅ Yes, I'll Join",
+          "style": 3
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_tbd_op_1756091811012",
+          "label": "❔ To Be Determined",
+          "style": 2
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_no_op_1756091811012",
+          "label": "❌ No Thank You",
+          "style": 4
+        }
+      ]
+    },
+    "operationEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: TEST**\n**📅 DATE & TIME:** 8/25 at 18:30 EST\n**👨‍✈️ OPERATION COMMANDER:** Test\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\nTest\n\n### **📍 POSITIONS:**\n1. Test (unlimited)\n\n### **📝 ADDITIONAL NOTES:**\nTest\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756091811012\n**📤 ISSUED BY:** justawacko_ | 8/25/2025, 3:16:53 AM",
+      "color": 16739125
+    },
+    "channelEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: TEST**\n**📅 DATE & TIME:** 8/25 at 18:30 EST\n**👨‍✈️ OPERATION COMMANDER:** Test\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\nTest\n\n### **📍 POSITIONS:**\n1. Test (unlimited)\n\n### **📝 ADDITIONAL NOTES:**\nTest\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756091811012\n**📤 ISSUED BY:** justawacko_ | 8/25/2025, 3:16:53 AM",
+      "color": 16739125,
+      "timestamp": "2025-08-25T03:16:53.768Z"
+    }
   }
 }
