@@ -10,6 +10,159 @@ const activeOperations = new Map();
 // Store operation scheduling data temporarily
 const operationSchedules = new Map();
 
+// Store active reminders (reminderId -> timeout object)
+const activeReminders = new Map();
+
+// Reminder checking interval (every 5 minutes)
+let reminderCheckInterval = null;
+
+/**
+ * Schedule reminders for an operation
+ */
+function scheduleOperationReminders(operationId, operationData) {
+    console.log(`📅 Scheduling reminders for operation: ${operationData.name}`);
+    
+    const operationTime = operationData.operationTimestamp * 1000; // Convert to milliseconds
+    const now = Date.now();
+    
+    // Clear any existing reminders for this operation
+    clearOperationReminders(operationId);
+    
+    operationData.reminderHours.forEach(hours => {
+        const reminderTime = operationTime - (hours * 60 * 60 * 1000); // Calculate reminder time
+        const timeUntilReminder = reminderTime - now;
+        
+        if (timeUntilReminder > 0) {
+            // Schedule the reminder
+            const timeoutId = setTimeout(() => {
+                sendOperationReminder(operationId, hours);
+            }, timeUntilReminder);
+            
+            // Store timeout for cleanup
+            const reminderId = `${operationId}_${hours}h`;
+            activeReminders.set(reminderId, timeoutId);
+            
+            console.log(`⏰ Scheduled reminder for ${operationData.name} - ${hours}h before operation`);
+        } else {
+            console.log(`⏰ Skipping past reminder for ${operationData.name} - ${hours}h (already passed)`);
+        }
+    });
+}
+
+/**
+ * Clear reminders for a specific operation
+ */
+function clearOperationReminders(operationId) {
+    for (const [reminderId, timeoutId] of activeReminders) {
+        if (reminderId.startsWith(operationId)) {
+            clearTimeout(timeoutId);
+            activeReminders.delete(reminderId);
+        }
+    }
+}
+
+/**
+ * Send reminder to operation attendees
+ */
+async function sendOperationReminder(operationId, hoursBeforeOperation) {
+    const operation = operationSchedules.get(operationId);
+    if (!operation) {
+        console.log(`❌ Operation ${operationId} not found for reminder`);
+        return;
+    }
+    
+    // Check if this reminder was already sent
+    const reminderKey = `${hoursBeforeOperation}h`;
+    if (operation.remindersSent.includes(reminderKey)) {
+        console.log(`⏰ Reminder ${reminderKey} already sent for ${operation.name}`);
+        return;
+    }
+    
+    // Mark reminder as sent
+    operation.remindersSent.push(reminderKey);
+    
+    // Get list of attendees (users who responded 'yes' or have job assignments)
+    const attendees = [];
+    
+    // Check responses for 'yes' responses
+    for (const [userId, responseData] of operation.responses) {
+        if (responseData.response === 'yes' || responseData.response === 'yes_pending_job') {
+            attendees.push(userId);
+        }
+    }
+    
+    // Also include users with job assignments (they confirmed attendance)
+    for (const [userId, job] of operation.jobAssignments) {
+        if (!attendees.includes(userId)) {
+            attendees.push(userId);
+        }
+    }
+    
+    if (attendees.length === 0) {
+        console.log(`⏰ No attendees to remind for ${operation.name}`);
+        return;
+    }
+    
+    console.log(`⏰ Sending ${hoursBeforeOperation}h reminder to ${attendees.length} attendees for ${operation.name}`);
+    
+    // Format reminder time
+    const timeFormat = hoursBeforeOperation >= 1 
+        ? `${hoursBeforeOperation} hour${hoursBeforeOperation !== 1 ? 's' : ''}` 
+        : `${Math.round(hoursBeforeOperation * 60)} minutes`;
+    
+    const reminderMessage = `🔔 **OPERATION REMINDER**\\n\\n` +
+        `**Operation**: ${operation.name}\\n` +
+        `**Time**: ${operation.time}\\n` +
+        `**Leader**: ${operation.leader}\\n` +
+        `**Starting in**: ${timeFormat}\\n\\n` +
+        `📍 **Your Position**: {USER_POSITION}\\n\\n` +
+        `🎯 **Don't forget to**:\\n` +
+        `• Join the operation voice channel\\n` +
+        `• Check for any last-minute updates\\n` +
+        `• Prepare your equipment and briefing materials\\n\\n` +
+        `📋 **Operation ID**: ${operationId}`;
+    
+    // Send DM reminders to all attendees
+    for (const userId of attendees) {
+        try {
+            const user = await global.client.users.fetch(userId);
+            if (user) {
+                const userPosition = operation.jobAssignments.get(userId) || 'Confirmed Attendee';
+                const personalizedMessage = reminderMessage.replace('{USER_POSITION}', userPosition);
+                
+                await user.send(personalizedMessage);
+                console.log(`✅ Reminder sent to ${user.tag}`);
+            }
+        } catch (error) {
+            console.error(`❌ Failed to send reminder to user ${userId}:`, error.message);
+        }
+    }
+    
+    // Save updated operation data (with reminder tracking)
+    await saveOperations();
+}
+
+/**
+ * Initialize reminder system - reschedule reminders for existing operations
+ */
+async function initializeReminderSystem() {
+    console.log('🔔 Initializing operation reminder system...');
+    
+    for (const [operationId, operation] of operationSchedules) {
+        if (operation.operationTimestamp) {
+            const operationTime = operation.operationTimestamp * 1000;
+            const now = Date.now();
+            
+            // Only reschedule if operation hasn't happened yet
+            if (operationTime > now) {
+                scheduleOperationReminders(operationId, operation);
+            }
+        }
+    }
+    
+    console.log(`🔔 Reminder system initialized for ${operationSchedules.size} operations`);
+}
+
 // Data persistence paths
 const ACTIVE_OPERATIONS_FILE = path.join(__dirname, '..', 'data', 'active-operations.json');
 const SCHEDULED_OPERATIONS_FILE = path.join(__dirname, '..', 'data', 'scheduled-operations.json');
@@ -155,6 +308,12 @@ async function saveFileWithBackup(filePath, backupPath, data) {
 async function loadOperations() {
     console.log('📁 Loading operations data from disk...');
     
+    // Clear existing reminders before loading
+    for (const [reminderId, timeoutId] of activeReminders) {
+        clearTimeout(timeoutId);
+    }
+    activeReminders.clear();
+    
     try {
         await ensureDataDirectory();
         
@@ -209,6 +368,9 @@ async function loadOperations() {
         );
         
         console.log('✅ All operations data loaded successfully');
+        
+        // Initialize reminder system after loading
+        setTimeout(() => initializeReminderSystem(), 1000);
         
     } catch (error) {
         console.error('❌ Critical error in loadOperations:', error);
@@ -579,12 +741,12 @@ module.exports = {
             .setRequired(true)
             .setMaxLength(500);
 
-        // Additional Notes
+        // Additional Notes & Reminders
         const additionalNotesInput = new TextInputBuilder()
             .setCustomId('schedule_additional_notes')
-            .setLabel('Additional Notes (Optional)')
+            .setLabel('Additional Notes & Reminder Times (Optional)')
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder('Any additional information, requirements, or special instructions...')
+            .setPlaceholder('Notes | Reminder hours: e.g., "Special briefing required | 24,2,0.5"')
             .setRequired(false)
             .setMaxLength(200);
 
@@ -644,11 +806,37 @@ module.exports = {
             const operationName = interaction.fields.getTextInputValue('schedule_operation_name');
             const operationTime = tempData.tempTime; // Use Discord timestamp from command
             const operationTimeReadable = tempData.tempTimeReadable; // Use readable version for internal display
+            const operationTimestamp = tempData.tempTimestamp; // Unix timestamp for reminder calculations
 
             const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
             const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
             const availableJobs = interaction.fields.getTextInputValue('schedule_available_jobs');
-            const additionalNotes = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
+            const additionalNotesRaw = interaction.fields.getTextInputValue('schedule_additional_notes') || 'None';
+            
+            // Parse additional notes and reminder settings
+            let additionalNotes = 'None';
+            let reminderHours = [24, 2]; // Default reminders: 24h and 2h before
+            
+            if (additionalNotesRaw && additionalNotesRaw !== 'None') {
+                const parts = additionalNotesRaw.split(' | ');
+                additionalNotes = parts[0] || 'None';
+                
+                // Parse reminder settings if provided
+                if (parts[1] && parts[1].includes(',')) {
+                    try {
+                        const reminderStrings = parts[1].split(',').map(s => s.trim());
+                        const parsedReminders = reminderStrings.map(h => parseFloat(h)).filter(h => h > 0 && h <= 168);
+                        if (parsedReminders.length > 0) {
+                            reminderHours = parsedReminders;
+                        }
+                    } catch (error) {
+                        console.log('Failed to parse reminder settings, using defaults');
+                    }
+                } else if (parts[1]) {
+                    // If there's text after |, but no comma, it's still part of notes
+                    additionalNotes = additionalNotesRaw;
+                }
+            }
 
             // Clean up temp data
             operationSchedules.delete(tempKey);
@@ -682,12 +870,18 @@ module.exports = {
                 categoryId: null,
                 voiceChannelId: null,
                 infoChannelId: null,
-                chatChannelId: null
+                chatChannelId: null,
+                reminderHours: reminderHours,
+                remindersSent: [],
+                operationTimestamp: operationTimestamp
             };
             operationSchedules.set(operationId, operationData);
             
             // Save to disk
             await saveOperations();
+            
+            // Schedule reminders for this operation
+            scheduleOperationReminders(operationId, operationData);
 
             // Create operation infrastructure (role, category, channels)
             const scheduleOperationRoleName = `Op-${operationName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
