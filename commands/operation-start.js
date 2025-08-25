@@ -486,7 +486,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    color: 0xFF6B35,
+                    color: '#FF6B35',
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -593,9 +593,6 @@ module.exports = {
 
             console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
 
-            // Force fetch all guild members to ensure we have the latest data
-            await interaction.guild.members.fetch();
-            
             // Get all members with the target role
             const membersWithRole = targetRole.members;
 
@@ -790,7 +787,7 @@ module.exports = {
             // Create operation role
             const operationRole = await guild.roles.create({
                 name: roleName,
-                color: 0xFF4500,
+                color: '#FF4500',
                 mentionable: true,
                 reason: `Operation ${operationName} role`
             });
