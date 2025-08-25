@@ -4,8 +4,9 @@ class RosterUpdater {
     constructor(client) {
         this.client = client;
         this.rosterChannelId = '1408854809888690288';
-        this.updateInterval = 5 * 60 * 1000; // 5 minutes
+        this.updateInterval = 2 * 60 * 1000; // 2 minutes (more frequent)
         this.lastMessageId = null;
+        this.lastUpdateTime = 0; // Track last update time
         
         this.start();
     }
@@ -17,7 +18,7 @@ class RosterUpdater {
         // Set up recurring updates
         setInterval(() => this.updateRoster(), this.updateInterval);
         
-        console.log('📋 Roster auto-updater started (updates every 5 minutes)');
+        console.log('📋 Roster auto-updater started (updates every 2 minutes)');
     }
 
     async updateRoster() {
@@ -44,6 +45,9 @@ class RosterUpdater {
                 'USAF | Air Force One Certified': '1408942834060361740', 
                 'USMC | Marine One Certified': '1408943018991423571',
                 'Ground Operations Certified': '1408995373455904789',
+                'F-22 Certified': '1409300377463165079',
+                'F-35 Certified': '1409300434967072888',
+                'F-16 Certified': '1409300512062574663',
                 'Trainee': '1408854677784887449'
             };
 
@@ -137,16 +141,30 @@ class RosterUpdater {
             });
 
             embed.setFooter({ 
-                text: `Last Updated: ${new Date().toLocaleTimeString()} • Updates every 5 minutes`
+                text: `Last Updated: ${new Date().toLocaleTimeString()} • Updates every 2 minutes`
             });
 
             const newMessage = await channel.send({ embeds: [embed] });
 
+            this.lastUpdateTime = Date.now();
             console.log(`📋 Roster updated in ${guild.name}`);
 
         } catch (error) {
             console.error('❌ Error updating roster:', error);
         }
+    }
+
+    // Method to force an immediate roster update (called when operation status changes)
+    async forceUpdate() {
+        const now = Date.now();
+        // Prevent spam updates (minimum 30 seconds between forced updates)
+        if (now - this.lastUpdateTime < 30000) {
+            console.log('⏱️ Roster update skipped (too recent)');
+            return;
+        }
+        
+        console.log('🔄 Forcing roster update due to operation status change...');
+        await this.updateRoster();
     }
 
     getRoleIcon(roleName) {
@@ -155,6 +173,9 @@ class RosterUpdater {
             case 'USAF | Air Force One Certified': return '✈️';
             case 'USMC | Marine One Certified': return '🚁';
             case 'Ground Operations Certified': return '🚛';
+            case 'F-22 Certified': return '🦅';
+            case 'F-35 Certified': return '⚡';
+            case 'F-16 Certified': return '🔥';
             case 'Trainee': return '🎓';
             default: return '🎖️';
         }

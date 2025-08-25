@@ -138,13 +138,8 @@ module.exports = {
                 .setName('schedule')
                 .setDescription('Schedule an operation and notify role members')
                 .addStringOption(option =>
-                    option.setName('date')
-                        .setDescription('Operation date (e.g., 9/23 or 12/15)')
-                        .setRequired(true)
-                )
-                .addStringOption(option =>
-                    option.setName('time')
-                        .setDescription('Operation time in EST (e.g., 12:20 or 18:30)')
+                    option.setName('timestamp')
+                        .setDescription('Discord timestamp (e.g., <t:1756131840:R> or <t:1756131840:t>)')
                         .setRequired(true)
                 )
         )
@@ -315,21 +310,46 @@ module.exports = {
             return;
         }
 
-        // Get date and time from command options
-        const operationDate = interaction.options.getString('date');
-        const operationTime = interaction.options.getString('time');
-        const fullDateTime = `${operationDate} at ${operationTime} EST`;
+        // Get timestamp from command options
+        const timestampInput = interaction.options.getString('timestamp');
+        
+        // Validate Discord timestamp format (e.g., <t:1756131840:R> or <t:1756131840:t>)
+        const timestampMatch = timestampInput.match(/<t:(\d+):([RtTdDfF])>/);
+        if (!timestampMatch) {
+            await interaction.reply({
+                content: '❌ **Invalid Timestamp Format**\n\nPlease use a Discord timestamp format like:\n• `<t:1756131840:R>` for relative time\n• `<t:1756131840:t>` for short time\n\nYou can generate timestamps at <https://www.timestamp-converter.com/> or use Discord\'s built-in timestamp tool.',
+                flags: 64
+            });
+            return;
+        }
 
-        // Store the time for use in modal handling
+        const timestamp = parseInt(timestampMatch[1]);
+        const format = timestampMatch[2];
+        
+        // Convert timestamp to readable format for display
+        const date = new Date(timestamp * 1000);
+        const readableTime = date.toLocaleString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long', 
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZoneName: 'short'
+        });
+
+        // Store the timestamp data for use in modal handling
         const tempId = Date.now().toString();
         operationSchedules.set(`temp_${interaction.user.id}_${tempId}`, { 
-            tempTime: fullDateTime
+            tempTime: timestampInput, // Store original Discord timestamp
+            tempTimeReadable: readableTime, // Store readable version for display
+            tempTimestamp: timestamp
         });
 
         // Create modal to collect operation details
         const modal = new ModalBuilder()
             .setCustomId(`operation_schedule_form_${tempId}`)
-            .setTitle(`Schedule Operation - ${operationDate} ${operationTime} EST`);
+            .setTitle(`Schedule Operation - ${readableTime.substring(0, 50)}`);
 
         // Operation Name
         const operationNameInput = new TextInputBuilder()
@@ -430,7 +450,8 @@ module.exports = {
 
             // Get form data
             const operationName = interaction.fields.getTextInputValue('schedule_operation_name');
-            const operationTime = tempData.tempTime; // Use combined date/time from command
+            const operationTime = tempData.tempTime; // Use Discord timestamp from command
+            const operationTimeReadable = tempData.tempTimeReadable; // Use readable version for internal display
 
             const operationDetails = interaction.fields.getTextInputValue('schedule_operation_details');
             const operationLeader = interaction.fields.getTextInputValue('schedule_operation_leader');
@@ -1213,6 +1234,13 @@ module.exports = {
         }
 
         console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}" (Attending: ${operation.attendingCount})`);
+        
+        // Trigger roster update when operation status changes
+        if (global.rosterUpdater) {
+            await global.rosterUpdater.forceUpdate().catch(err => 
+                console.error('Failed to update roster:', err)
+            );
+        }
     },
 
     async handleJobSelection(interaction, operationId) {
@@ -1411,6 +1439,13 @@ module.exports = {
         });
 
         console.log(`🎯 Job Assignment: ${interaction.user.tag} selected "${selectedJob}" for operation "${operation.name}"`);
+        
+        // Trigger roster update when job assignment changes
+        if (global.rosterUpdater) {
+            await global.rosterUpdater.forceUpdate().catch(err => 
+                console.error('Failed to update roster:', err)
+            );
+        }
     },
 
     async handleEditButton(interaction) {
@@ -1425,14 +1460,16 @@ module.exports = {
 
         if (interaction.customId.startsWith('edit_details_')) {
             const operationId = interaction.customId.replace('edit_details_', '');
-            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+            const operation = operationSchedules.get(operationId) || activeOperations.get(operationId);
             
             console.log(`🔍 Edit details button - Operation ID: ${operationId}`);
+            console.log(`🔍 Available scheduled operations:`, Array.from(operationSchedules.keys()));
+            console.log(`🔍 Available active operations:`, Array.from(activeOperations.keys()));
             console.log(`🔍 Found operation:`, operation ? operation.name : 'Not found');
 
             if (!operation) {
                 await interaction.reply({
-                    content: '❌ **Error**: Operation not found.',
+                    content: `❌ **Error**: Operation not found with ID: ${operationId}.\n\n**Available Operations:**\n${Array.from(operationSchedules.keys()).concat(Array.from(activeOperations.keys())).map(id => `• ${id}`).join('\n') || 'No operations found'}`,
                     flags: 64
                 });
                 return;
@@ -1476,14 +1513,14 @@ module.exports = {
             await interaction.showModal(modal);
         } else if (interaction.customId.startsWith('edit_positions_')) {
             const operationId = interaction.customId.replace('edit_positions_', '');
-            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+            const operation = operationSchedules.get(operationId) || activeOperations.get(operationId);
             
             console.log(`🔍 Edit positions button - Operation ID: ${operationId}`);
             console.log(`🔍 Found operation:`, operation ? operation.name : 'Not found');
             
             if (!operation) {
                 await interaction.reply({
-                    content: '❌ **Error**: Operation not found.',
+                    content: `❌ **Error**: Operation not found with ID: ${operationId}.\n\n**Available Operations:**\n${Array.from(operationSchedules.keys()).concat(Array.from(activeOperations.keys())).map(id => `• ${id}`).join('\n') || 'No operations found'}`,
                     flags: 64
                 });
                 return;
@@ -1517,14 +1554,14 @@ module.exports = {
             
         } else if (interaction.customId.startsWith('manage_assignments_')) {
             const operationId = interaction.customId.replace('manage_assignments_', '');
-            const operation = activeOperations.get(operationId) || operationSchedules.get(operationId);
+            const operation = operationSchedules.get(operationId) || activeOperations.get(operationId);
             
             console.log(`🔍 Manage assignments button - Operation ID: ${operationId}`);
             console.log(`🔍 Found operation:`, operation ? operation.name : 'Not found');
 
             if (!operation) {
                 await interaction.reply({
-                    content: '❌ **Error**: Operation not found.',
+                    content: `❌ **Error**: Operation not found with ID: ${operationId}.\n\n**Available Operations:**\n${Array.from(operationSchedules.keys()).concat(Array.from(activeOperations.keys())).map(id => `• ${id}`).join('\n') || 'No operations found'}`,
                     flags: 64
                 });
                 return;

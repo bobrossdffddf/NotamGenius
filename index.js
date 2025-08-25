@@ -52,7 +52,10 @@ client.once(Events.ClientReady, async readyClient => {
     
     // Start roster auto-updater
     const RosterUpdater = require('./utils/roster-updater');
-    new RosterUpdater(readyClient);
+    const rosterUpdater = new RosterUpdater(readyClient);
+    
+    // Make roster updater globally accessible for operation status changes
+    global.rosterUpdater = rosterUpdater;
     
     // Load operations from disk
     await loadOperationsOnStartup();
