@@ -591,8 +591,17 @@ module.exports = {
                 return;
             }
 
+            console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
+
             // Get all members with the target role
             const membersWithRole = targetRole.members;
+
+            console.log(`👥 Found ${membersWithRole.size} members with role "${targetRole.name}"`);
+            
+            // Log each member for debugging
+            for (const [memberId, member] of membersWithRole) {
+                console.log(`   - ${member.user.tag} (${memberId})`);
+            }
 
             if (membersWithRole.size === 0) {
                 await interaction.editReply({
@@ -1581,6 +1590,8 @@ module.exports = {
             const operationEmbed = operation.operationEmbed;
             const responseRow = operation.responseRow;
 
+            console.log(`📤 Starting DM delivery to ${membersWithRole.size} members...`);
+            
             for (const [memberId, member] of membersWithRole) {
                 try {
                     await member.send({
@@ -1588,12 +1599,15 @@ module.exports = {
                         embeds: [operationEmbed],
                         components: [responseRow]
                     });
+                    console.log(`✅ DM sent successfully to ${member.user.tag}`);
                     successCount++;
                 } catch (error) {
-                    console.error(`Failed to send DM to ${member.user.tag}:`, error);
+                    console.error(`❌ Failed to send DM to ${member.user.tag}:`, error.message);
                     failCount++;
                 }
             }
+            
+            console.log(`📊 DM Results: ${successCount} successful, ${failCount} failed`)
 
             // Send final confirmation
             const confirmEmbed = new EmbedBuilder()
