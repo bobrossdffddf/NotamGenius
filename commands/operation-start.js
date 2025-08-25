@@ -593,25 +593,38 @@ module.exports = {
 
             console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
 
-            // Force fetch ALL guild members (including offline ones)
-            console.log(`🔄 Fetching all guild members...`);
-            try {
-                await interaction.guild.members.fetch({ force: true });
-                console.log(`✅ Successfully fetched ${interaction.guild.memberCount} total members`);
-            } catch (error) {
-                console.log(`⚠️ Failed to fetch all members: ${error.message}`);
-            }
-
-            // Now get all members with the target role (should include offline members)
-            const membersWithRole = interaction.guild.members.cache.filter(member => 
-                member.roles.cache.has(TARGET_ROLE_ID)
-            );
+            // Get all members with the target role using the role's member collection
+            const membersWithRole = targetRole.members;
 
             console.log(`👥 Found ${membersWithRole.size} members with role "${targetRole.name}"`);
             
-            // Log each member for debugging
-            for (const [memberId, member] of membersWithRole) {
-                console.log(`   - ${member.user.tag} (${memberId})`);
+            // If no members found, try fetching just this role's members
+            if (membersWithRole.size === 0) {
+                console.log(`🔄 No members found, trying to fetch members with this role...`);
+                try {
+                    // Fetch members with this specific role only
+                    const fetchedMembers = await interaction.guild.members.fetch();
+                    const roleMembers = fetchedMembers.filter(member => member.roles.cache.has(TARGET_ROLE_ID));
+                    console.log(`✅ Found ${roleMembers.size} members after fetching`);
+                    
+                    // Use the fetched members if we found any
+                    if (roleMembers.size > 0) {
+                        console.log(`👥 Using ${roleMembers.size} fetched members with role`);
+                        // Process the roleMembers collection for DMs
+                        const memberArray = Array.from(roleMembers.values());
+                        console.log(`📝 Member list:`)
+                        memberArray.forEach(member => {
+                            console.log(`   - ${member.user.tag} (${member.id})`);
+                        });
+                    }
+                } catch (error) {
+                    console.log(`⚠️ Failed to fetch role members: ${error.message}`);
+                }
+            } else {
+                // Log each member for debugging
+                for (const [memberId, member] of membersWithRole) {
+                    console.log(`   - ${member.user.tag} (${memberId})`);
+                }
             }
 
             // Simple timestamp for issued time

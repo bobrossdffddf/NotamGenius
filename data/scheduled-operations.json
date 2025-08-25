@@ -1417,5 +1417,29 @@
       "color": 16739125,
       "timestamp": "2025-08-25T03:28:16.284Z"
     }
+  },
+  "op_1756092554488": {
+    "name": "E",
+    "time": "9/25 at 18:30 EST",
+    "details": "E",
+    "leader": "E",
+    "availableJobs": [
+      {
+        "name": "E",
+        "maxCount": null
+      }
+    ],
+    "notes": "E",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": "1409379067127664690",
+    "detailsMessageId": null,
+    "categoryId": "1409379068104806411",
+    "voiceChannelId": "1409379073062342748",
+    "infoChannelId": "1409379074484338829",
+    "chatChannelId": "1409379076078047354"
   }
 }
