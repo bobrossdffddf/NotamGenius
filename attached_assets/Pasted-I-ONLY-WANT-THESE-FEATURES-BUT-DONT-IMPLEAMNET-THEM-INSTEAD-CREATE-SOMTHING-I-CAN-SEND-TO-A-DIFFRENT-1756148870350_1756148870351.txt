@@ -1,0 +1,283 @@
+I ONLY WANT THESE FEATURES BUT DONT IMPLEAMNET THEM INSTEAD CREATE SOMTHING I CAN SEND TO A DIFFRENT AI TO MAKE THIS IN YOUR VISIOION PLEASE IT WILL USE THIS CODE IM JUST LOW ON CREDITS
+Core Certification Management
+Certificate Types & Hierarchies
+Aircraft Certifications: F-22, F-16, F-35, A-10, KC-135, C-130,
+Role-Based Certifications: Flight Lead, Mission Commander, ATC, Ground Crew
+Specialized Skills: Formation Flying
+Instructor Qualifications: Basic Instructor, Senior Instructor
+Certification Levels & Prerequisites
+Trainee
+Certified
+📅 Advanced Scheduling System
+Training Session Management
+Session Types: Ground School, Simulator, Flight Training,
+Waitlist Management: Auto-assign when slots open up
+Instructor Coordination
+Instructor Availability: Set available times, blackout dates, specialties
+Auto-Assignment: Match students with qualified instructors based on availability
+Instructor Workload Balancing: Prevent overloading, distribute students fairly
+📊 Progress Tracking & Analytics
+Individual Progress Monitoring
+Training Hours: Track flight time, sim time, ground school hours
+Skill Progression: Charts showing improvement over time
+Weak Areas: Identify skills needing extra attention
+Training Velocity: How quickly members progress through certifications
+Personal Training Calendar: Individual view of all upcoming requirements
+Add trainer notes
+Trainer log sessions for each trainne for nots and stuff
+🎯 Qualification Standards & Testing
+Knowledge Testing System MAKE THE WRITTEN EXSAM PLEASE FOR EACH CERT YOU MAKE IT MAKE IT KIND OF EASY
+Written Exams: Multiple choice, scenario-based questions
+Practical Assessments: Simulated mission scenarios
+Emergency Procedures: Quick response drills and evaluations
+Question Bank Management: Rotating questions, difficulty levels
+How can I add a database system so if the bot restarts I dont loose everything
+NO EXPIRATION on certs
+Top Gun Competitions: Best pilot competitions with rankings
+Training Challenges: Monthly skill-building contests
+Quality Assurance
+Training Feedback: Students rate instructors and sessions
+Standardization: Ensure consistent training across instructors
+Continuous Improvement: Use data to enhance training effectiveness
+Operation Planning: Show qualified personnel for mission planning
+Roster Integration: Display certifications in member profiles
+Commander Dashboard
+Unit Readiness: Overall certification status of the squadron
+Training Budget: Cost tracking and budget management
+Critical Shortfalls: Positions that lack qualified personnel
+Training Pipeline: See all students in various stages
+Performance Trends: Unit training effectiveness over time
+Custom Reports: Build reports for specific needs
+Export Capabilities: Excel, PDF, CSV for external use
+Historical Analysis: Compare current vs past performance
+Predictive Analytics: Forecast future training needs
+Regulatory Reports: Official documentation for inspections
+3 minutes ago
+Training Certification Tracker - Complete Implementation Specification
+Project Overview
+Implement a comprehensive training certification system for a Discord bot that manages military aviation operations. This system should integrate with the existing bot architecture (Discord.js v14, file-based data storage) and provide full training lifecycle management.
+Database Architecture
+Recommended Database Solution
+Since the bot currently uses file-based storage, implement SQLite database for persistence:
+// Use better-sqlite3 package for synchronous operations
+const Database = require('better-sqlite3');
+const db = new Database('training_data.db');
+// Create tables on startup
+db.exec(`
+ CREATE TABLE IF NOT EXISTS certifications (
+   id INTEGER PRIMARY KEY,
+   user_id TEXT,
+   cert_type TEXT,
+   cert_level TEXT,
+   date_earned TEXT,
+   instructor_id TEXT,
+   notes TEXT
+ );
+  CREATE TABLE IF NOT EXISTS training_sessions (
+   id INTEGER PRIMARY KEY,
+   trainee_id TEXT,
+   instructor_id TEXT,
+   session_type TEXT,
+   date TEXT,
+   hours REAL,
+   notes TEXT,
+   progress_score INTEGER
+ );
+  CREATE TABLE IF NOT EXISTS written_exams (
+   id INTEGER PRIMARY KEY,
+   user_id TEXT,
+   cert_type TEXT,
+   score INTEGER,
+   date_taken TEXT,
+   passed INTEGER
+ );
+`);
+1. Core Certification Management
+Certificate Types Structure
+const CERTIFICATIONS = {
+ aircraft: {
+   'F-22': { name: 'F-22 Raptor', difficulty: 'advanced', prerequisites: ['trainee'] },
+   'F-16': { name: 'F-16 Fighting Falcon', difficulty: 'intermediate', prerequisites: ['trainee'] },
+   'F-35': { name: 'F-35 Lightning II', difficulty: 'advanced', prerequisites: ['trainee'] },
+   'A-10': { name: 'A-10 Thunderbolt II', difficulty: 'intermediate', prerequisites: ['trainee'] },
+   'KC-135': { name: 'KC-135 Stratotanker', difficulty: 'intermediate', prerequisites: ['trainee'] },
+   'C-130': { name: 'C-130 Hercules', difficulty: 'basic', prerequisites: ['trainee'] }
+ },
+ roles: {
+   'flight-lead': { name: 'Flight Lead', prerequisites: ['certified'], minFlightHours: 50 },
+   'mission-commander': { name: 'Mission Commander', prerequisites: ['flight-lead'], minFlightHours: 100 },
+   'atc': { name: 'Air Traffic Controller', prerequisites: ['trainee'], minFlightHours: 0 },
+   'ground-crew': { name: 'Ground Crew', prerequisites: ['trainee'], minFlightHours: 0 }
+ },
+ skills: {
+   'formation-flying': { name: 'Formation Flying', prerequisites: ['certified'], minFlightHours: 25 }
+ },
+ instructor: {
+   'basic-instructor': { name: 'Basic Instructor', prerequisites: ['certified'], minFlightHours: 75 },
+   'senior-instructor': { name: 'Senior Instructor', prerequisites: ['basic-instructor'], minFlightHours: 150 }
+ }
+};
+const CERT_LEVELS = {
+ 'trainee': { name: 'Trainee', color: 0x808080 },
+ 'certified': { name: 'Certified', color: 0x00FF00 }
+};
+Commands to Implement
+/training cert view [@user] - View someone's certifications
+/training cert award <user> <cert_type> - Award certification (instructor only)
+/training cert list - List all available certifications
+/training cert progress <user> - Show certification progress
+2. Advanced Scheduling System
+Training Session Structure
+const trainingDatabase = {
+ sessions: new Map(), // sessionId -> session data
+ waitlists: new Map(), // certType -> [userIds]
+ instructorAvailability: new Map() // instructorId -> availability data
+};
+const sessionTypes = {
+ 'ground-school': { duration: 1, maxStudents: 10 },
+ 'simulator': { duration: 2, maxStudents: 4 },
+ 'flight-training': { duration: 3, maxStudents: 2 }
+};
+Commands to Implement
+/training schedule session <type> <date> <time> - Schedule training session
+/training schedule join <session_id> - Join training session
+/training schedule availability - Set instructor availability
+/training waitlist add <cert_type> - Join waitlist for certification
+/training sessions upcoming - View upcoming sessions
+3. Progress Tracking & Analytics
+Individual Progress System
+const progressTracking = {
+ trackHours: (userId, sessionType, hours) => {
+   // Add hours to user's record
+ },
+ getWeakAreas: (userId) => {
+   // Analyze failed attempts and low scores
+ },
+ getTrainingVelocity: (userId) => {
+   // Calculate certs per month
+ }
+};
+Commands to Implement
+/training progress view [@user] - Personal training dashboard
+/training hours log <user> <type> <hours> - Log training hours (instructor only)
+/training notes add <user> <note> - Add trainer notes
+/training notes view <user> - View trainer notes
+/training calendar [@user] - Personal training calendar
+4. Qualification Standards & Testing
+Written Exam Questions Database
+Create easy multiple-choice questions for each certification:
+const examQuestions = {
+ 'F-22': [
+   {
+     question: "What is the maximum speed of the F-22 Raptor?",
+     options: ["Mach 1.5", "Mach 2.25", "Mach 3.0", "Mach 1.8"],
+     correct: 1,
+     difficulty: "easy"
+   },
+   {
+     question: "The F-22's stealth technology primarily works against which detection method?",
+     options: ["Visual", "Radar", "Infrared", "Audio"],
+     correct: 1,
+     difficulty: "easy"
+   },
+   {
+     question: "What does 'supercruise' mean in relation to the F-22?",
+     options: ["Flying at very high altitude", "Supersonic flight without afterburner", "Advanced autopilot", "Stealth mode"],
+     correct: 1,
+     difficulty: "medium"
+   }
+   // Add 15-20 questions per certification
+ ],
+ 'F-16': [
+   {
+     question: "The F-16 is commonly known as the:",
+     options: ["Eagle", "Falcon", "Raptor", "Hornet"],
+     correct: 1,
+     difficulty: "easy"
+   },
+   // Add more F-16 questions
+ ]
+ // Continue for all aircraft types
+};
+Commands to Implement
+/training exam start <cert_type> - Begin written examination
+/training exam results [@user] - View exam results
+/training practical schedule <user> <cert_type> - Schedule practical assessment
+5. Competition System
+Competition Structure
+const competitions = {
+ 'top-gun': {
+   name: 'Top Gun Monthly',
+   criteria: ['flight_hours', 'exam_scores', 'training_completion'],
+   rewards: ['Top Gun Role', 'Special Badge']
+ },
+ 'training-challenge': {
+   name: 'Training Challenge',
+   criteria: ['sessions_completed', 'improvement_rate'],
+   frequency: 'monthly'
+ }
+};
+Commands to Implement
+/training competition current - View current competitions
+/training leaderboard [type] - Show leaderboards
+/training badges [@user] - View earned badges
+6. Quality Assurance
+Feedback System
+const feedbackSystem = {
+ sessionRatings: new Map(), // sessionId -> ratings
+ instructorRatings: new Map(), // instructorId -> average rating
+ improvementSuggestions: []
+};
+Commands to Implement
+/training feedback session <session_id> <rating> [comment] - Rate session
+/training feedback instructor <instructor> <rating> [comment] - Rate instructor
+/training quality report - Generate quality report
+7. Integration with Existing Systems
+Operation Integration
+Modify existing operation system to check certifications:
+// In operation-start.js, add certification checking
+function getQualifiedPersonnel(requiredCerts) {
+ // Query database for users with required certifications
+ // Return list of qualified members
+}
+Roster Integration
+Add certification display to member profiles in roster system.
+8. Commander Dashboard
+Dashboard Commands
+/training dashboard unit - Overall unit readiness
+/training dashboard instructor - Instructor workload
+/training pipeline - Students in training
+/training reports generate <type> - Generate reports
+/training export <format> - Export data (CSV/Excel)
+Implementation Priority Order
+Database Setup - Implement SQLite with all tables
+Basic Certification Management - Core cert tracking
+Written Exam System - Question database and testing
+Session Scheduling - Basic scheduling functionality
+Progress Tracking - Hours and notes logging
+Dashboard System - Commander oversight tools
+Competition Features - Leaderboards and challenges
+Quality Assurance - Feedback and rating systems
+File Structure
+commands/
+ training/
+   certification.js
+   scheduling.js
+   exams.js
+   dashboard.js
+   competitions.js
+utils/
+ training-database.js
+ exam-questions.js
+ training-utils.js
+data/
+ training_data.db (SQLite database)
+ training-config.json
+Integration Notes
+Use existing permission system from utils/permissions.js
+Follow existing command structure pattern
+Use Discord.js modals for forms (scheduling, feedback)
+Integrate with existing guild configuration system
+Maintain compatibility with current data storage approach
+This specification provides a complete roadmap for implementing the training certification tracker within the existing Discord bot architecture.
+

@@ -140,6 +140,46 @@ client.on(Events.InteractionCreate, async interaction => {
                 }
             }
         }
+        // Handle training exam button interactions
+        else if (interaction.customId.startsWith('start_exam_') || 
+                 interaction.customId.startsWith('cancel_exam_') ||
+                 interaction.customId.startsWith('answer_') ||
+                 interaction.customId.startsWith('next_question_') ||
+                 interaction.customId.startsWith('submit_exam_') ||
+                 interaction.customId.startsWith('review_exam_')) {
+            const command = interaction.client.commands.get('training-exam');
+            if (command && command.handleButton) {
+                try {
+                    await command.handleButton(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling training exam button interaction:', error);
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({ 
+                            content: '❌ There was an error processing your exam!', 
+                            flags: 64 
+                        });
+                    }
+                }
+            }
+        }
+        // Handle training schedule button interactions
+        else if (interaction.customId.startsWith('join_session_') || 
+                 interaction.customId.startsWith('leave_session_')) {
+            const command = interaction.client.commands.get('training-schedule');
+            if (command && command.handleButton) {
+                try {
+                    await command.handleButton(interaction);
+                } catch (error) {
+                    console.error('❌ Error handling training schedule button interaction:', error);
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({ 
+                            content: '❌ There was an error processing your request!', 
+                            flags: 64 
+                        });
+                    }
+                }
+            }
+        }
         // Handle operation response button interactions
         else if (interaction.customId.startsWith('op_response_')) {
             const command = interaction.client.commands.get('operation');

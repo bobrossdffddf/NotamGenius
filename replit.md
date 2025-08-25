@@ -49,17 +49,60 @@ Environment-based configuration with performance optimizations:
 # External Dependencies
 
 ## Core Dependencies
-- **discord.js v14.21.0**: Primary Discord API library providing bot functionality, slash commands, embeds, modals, and interaction handling
+- **discord.js v14.22.1**: Primary Discord API library providing bot functionality, slash commands, embeds, modals, and interaction handling
 - **dotenv v17.2.1**: Environment variable management for secure configuration loading
+- **better-sqlite3**: High-performance SQLite database for persistent training data storage
 
 ## Discord API Integration
-- **Gateway Intents**: Configured for Guilds, GuildMessages, and MessageContent intents
-- **Slash Commands**: Full integration with Discord's application command system
-- **Interactive Components**: Utilizes Discord's modal, button, and embed systems for rich user interactions
+- **Gateway Intents**: Configured for Guilds, GuildMessages, MessageContent, and GuildMembers intents
+- **Slash Commands**: Full integration with Discord's application command system including subcommand groups
+- **Interactive Components**: Utilizes Discord's modal, button, embed, and select menu systems for rich user interactions
+
+## Training System Integration
+- **SQLite Database**: Persistent storage for certifications, training sessions, exam results, and analytics
+- **Comprehensive Command System**: Multi-level command hierarchy with training, exam, and scheduling subsystems
+- **Question Bank System**: Extensive exam questions for all certification types
+- **Session Management**: Advanced scheduling and participant tracking
 
 ## Node.js Runtime
 - **File System Operations**: Uses Node.js fs module for dynamic command loading
 - **Path Resolution**: Node.js path module for cross-platform file path handling
 - **Built-in Collections**: Leverages Discord.js Collection class for efficient command storage and retrieval
+- **Database Operations**: Synchronous SQLite operations for reliable data persistence
 
-The application is designed as a self-contained Discord bot with no external database requirements, using in-memory storage for temporary form data and file-based command loading.
+The application now features a complete training certification system with database persistence, comprehensive exam system, and advanced scheduling capabilities alongside the original NOTAM and operation management features.
+
+# Training System Features
+
+## Certification Management
+- **Aircraft Certifications**: F-22, F-16, F-35, A-10, KC-135, C-130
+- **Role Certifications**: Flight Lead, Mission Commander, ATC, Ground Crew
+- **Skill Certifications**: Formation Flying
+- **Instructor Levels**: Basic Instructor, Senior Instructor
+- **Prerequisites System**: Automatic validation of certification requirements
+
+## Written Examination System
+- **10+ Questions per Certification**: Comprehensive question banks
+- **Multiple Choice Format**: Easy-to-answer format with immediate feedback
+- **70% Passing Score**: Industry-standard requirements
+- **Retake Capability**: Unlimited attempts for failed exams
+- **Score Tracking**: Historical exam performance
+
+## Training Session Management
+- **Session Types**: Ground School, Simulator, Flight Training, Weapons Training, Emergency Procedures
+- **Capacity Management**: Automatic enrollment limits and waitlists
+- **Instructor Assignment**: Qualified instructor matching
+- **Schedule Tracking**: Upcoming session visibility
+
+## Progress Tracking
+- **Training Hours**: Detailed logging by session type
+- **Trainer Notes**: Instructor feedback and progress notes
+- **Analytics Dashboard**: Performance metrics and trends
+- **Leaderboards**: Top performer recognition
+- **Unit Readiness**: Overall squadron certification status
+
+## Database Schema
+- **12 Database Tables**: Complete relational structure
+- **Data Persistence**: No data loss on bot restart
+- **Performance Optimized**: Efficient queries and indexing
+- **Security Focused**: Validated inputs and safe operations
