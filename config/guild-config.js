@@ -119,7 +119,7 @@ class GuildConfigManager {
         if (privateChannel) config.privateChannelId = privateChannel.id;
 
         // Try to find a suitable target role (look for roles that might be used for operations)
-        const targetRole = roles.find(r => 
+        const targetRole = guild.roles.cache.find(r => 
             r.name.toLowerCase().includes('pilot') || 
             r.name.toLowerCase().includes('operator') ||
             r.name.toLowerCase().includes('member') ||
