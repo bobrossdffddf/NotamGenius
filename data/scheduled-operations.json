@@ -1172,5 +1172,29 @@
     "voiceChannelId": null,
     "infoChannelId": null,
     "chatChannelId": null
+  },
+  "op_1756092161671": {
+    "name": "E",
+    "time": "9/25 at 18:30 EST",
+    "details": "e",
+    "leader": "e",
+    "availableJobs": [
+      {
+        "name": "e",
+        "maxCount": null
+      }
+    ],
+    "notes": "e",
+    "responses": {},
+    "jobAssignments": {},
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 0,
+    "operationRoleId": null,
+    "detailsMessageId": null,
+    "categoryId": null,
+    "voiceChannelId": null,
+    "infoChannelId": null,
+    "chatChannelId": null
   }
 }

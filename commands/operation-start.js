@@ -593,6 +593,9 @@ module.exports = {
 
             console.log(`🔍 Target role "${targetRole.name}" (${TARGET_ROLE_ID}) found`);
 
+            // Force fetch all guild members to ensure we have the latest data
+            await interaction.guild.members.fetch();
+            
             // Get all members with the target role
             const membersWithRole = targetRole.members;
 
@@ -601,13 +604,6 @@ module.exports = {
             // Log each member for debugging
             for (const [memberId, member] of membersWithRole) {
                 console.log(`   - ${member.user.tag} (${memberId})`);
-            }
-
-            if (membersWithRole.size === 0) {
-                await interaction.editReply({
-                    content: '❌ **No Members**: No members found with the target role.'
-                });
-                return;
             }
 
             // Simple timestamp for issued time
