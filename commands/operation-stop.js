@@ -116,8 +116,8 @@ module.exports = {
                 .addFields(
                     { name: '👤 Operation Leader', value: operation.leader || 'Unknown', inline: true },
                     { name: '⏱️ Actual Duration', value: `${duration} hours`, inline: true },
-                    { name: '📅 Start Time', value: this.formatTimeEST(new Date(operation.startTime)), inline: true },
-                    { name: '🏁 End Time', value: this.formatTimeEST(new Date()), inline: true },
+                    { name: '📅 Start Time', value: new Date(operation.startTime).toLocaleString(), inline: true },
+                    { name: '🏁 End Time', value: new Date().toLocaleString(), inline: true },
                     { name: '🎯 Details', value: operation.details || 'No details provided' },
                     { name: '👥 Personnel Count', value: operationRole ? `${operationRole.members.size} assigned` : 'Unknown', inline: true },
                     { name: '📊 Status', value: '✅ Mission Complete', inline: true }
@@ -186,15 +186,4 @@ module.exports = {
         }
     },
 
-    formatTimeEST(date) {
-        // Convert to EST (UTC-5)
-        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
-        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(estDate.getUTCDate()).padStart(2, '0');
-        const year = estDate.getUTCFullYear();
-        const hours = String(estDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
-        
-        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
-    }
 };

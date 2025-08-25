@@ -612,43 +612,8 @@ module.exports = {
                 return;
             }
 
-            // Format according to user's exact specification - MM/DD/YYYY @ HHMM EST
-            const timeStamp = this.formatTimeEST(new Date());
-
-            // Create Discord timestamp from operation time - automatically shows in user's timezone
-            const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
-            const timeMatch = operationTime.match(timeRegex);
-            let discordTimestamp = '<t:1756013700:R>'; // fallback
-
-            if (timeMatch) {
-                const [, month, day, hour, minute, timezone] = timeMatch;
-                const year = new Date().getFullYear();
-
-                // Create date object in the specified timezone
-                let date;
-                if (timezone === 'EST' || timezone === 'EDT') {
-                    // EST is UTC-5, EDT is UTC-4 - create date in local timezone first
-                    const utcOffset = timezone === 'EST' ? 5 : 4;
-                    date = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-                    // Convert local time to UTC by adding the offset
-                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000));
-                } else if (timezone === 'PST' || timezone === 'PDT') {
-                    // PST is UTC-8, PDT is UTC-7 - create date in local timezone first
-                    const utcOffset = timezone === 'PST' ? 8 : 7;
-                    date = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-                    // Convert local time to UTC by adding the offset
-                    date.setTime(date.getTime() + (utcOffset * 60 * 60 * 1000));
-                } else {
-                    // Default to EST if timezone not recognized
-                    date = new Date(year, parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
-                    date.setTime(date.getTime() + (5 * 60 * 60 * 1000)); // Assume EST
-                    console.log(`Warning: Unrecognized timezone ${timezone}, assuming EST`);
-                }
-
-                // Create Unix timestamp and Discord timestamp - will show in each user's local timezone
-                const unixTimestamp = Math.floor(date.getTime() / 1000);
-                discordTimestamp = `<t:${unixTimestamp}:F> (<t:${unixTimestamp}:R>)`;
-            }
+            // Simple timestamp for issued time
+            const timeStamp = new Date().toLocaleString();
 
             // Format available positions for display with capacity
             const positionsText = jobsList.map((job, index) => {
@@ -656,7 +621,7 @@ module.exports = {
                 return `${index + 1}. ${job.name}${capacity}`;
             }).join('\n');
 
-            const dmNotamContent = `## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**🕐 STARTS:** ${discordTimestamp}\n**👨‍✈️ OPERATION COMMANDER:** ${operationLeader}\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📍 POSITIONS:**\n${positionsText}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** ${operationId}\n**📤 ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
+            const dmNotamContent = `## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: ${operationName.toUpperCase()}**\n**📅 DATE & TIME:** ${operationTime}\n**👨‍✈️ OPERATION COMMANDER:** ${operationLeader}\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** ${operationData.attendingCount || 0}\n_________________________________________________\n### **📋 OPERATION DETAILS:**\n${operationDetails}\n\n### **📍 POSITIONS:**\n${positionsText}\n\n### **📝 ADDITIONAL NOTES:**\n${additionalNotes}\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** ${operationId}\n**📤 ISSUED BY:** ${interaction.user.tag} | ${timeStamp}`;
 
             const operationEmbed = new EmbedBuilder()
                 .setDescription(dmNotamContent)
@@ -955,7 +920,7 @@ module.exports = {
                     { name: '🎯 Objective', value: objective },
                     { name: '📝 Special Instructions', value: notes },
                     { name: '🏷️ Operation Role', value: `<@&${operationRole.id}>`, inline: true },
-                    { name: '⏰ End Time', value: this.formatTimeEST(new Date(endTime)), inline: true }
+                    { name: '⏰ End Time', value: new Date(endTime).toLocaleString(), inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: `Operation ID: ${operationId}` });
@@ -1098,23 +1063,40 @@ module.exports = {
         });
 
         // Update attending count for non-yes responses
-        if (response !== 'yes' && previousResponse && previousResponse.response === 'yes') {
+        if (response !== 'yes' && previousResponse && (previousResponse.response === 'yes' || previousResponse.response === 'yes_pending_job')) {
             operation.attendingCount = Math.max(0, operation.attendingCount - 1);
         }
 
-        // Remove role if they changed from yes to no/tbd
+        // Remove role and assignment if they changed from yes to no/tbd
         if (response !== 'yes' && operation.operationRoleId) {
             try {
                 const guild = await global.client.guilds.fetch(operation.guildId);
                 const member = await guild.members.fetch(interaction.user.id);
                 const operationRole = guild.roles.cache.get(operation.operationRoleId);
-                if (operationRole && member.roles.cache.has(operation.operationRoleId)) {
+                
+                // Get their previous job assignment for logging
+                const previousJob = operation.jobAssignments.get(interaction.user.id);
+                
+                if (operationRole && member && member.roles.cache.has(operation.operationRoleId)) {
                     await member.roles.remove(operationRole);
+                    console.log(`🗑️ Removed operation role from ${member.user.tag} (changed response to ${response})`);
                 }
-                // Also remove job assignment
-                operation.jobAssignments.delete(interaction.user.id);
+                
+                // Remove job assignment
+                if (operation.jobAssignments.has(interaction.user.id)) {
+                    operation.jobAssignments.delete(interaction.user.id);
+                    
+                    if (previousJob) {
+                        console.log(`🎯 Removed job assignment: ${member ? member.user.tag : interaction.user.tag} was removed from ${previousJob}`);
+                    }
+                }
+                
+                // Save changes to disk
+                await saveOperations();
+                
             } catch (error) {
-                console.error('Error removing operation role:', error);
+                console.error(`Error removing operation role for ${interaction.user.tag}:`, error.message);
+                // Continue execution even if role removal fails
             }
         }
 
@@ -1179,17 +1161,21 @@ module.exports = {
             }
         }
 
-        // Response messages
+        // Response messages with better context for assignment removal
         const responseMessages = {
-            'yes': `✅ **Confirmed!** You have confirmed your participation and received the operation role.`,
-            'tbd': '❔ **Noted!** You have marked your availability as "To Be Determined".',
-            'no': '❌ **Understood!** You have declined participation in this operation.'
+            'yes': '✅ **Confirmed!** You have confirmed your participation and received the operation role.',
+            'tbd': '❔ **Noted!** You have marked your availability as "To Be Determined".' + (previousResponse && (previousResponse.response === 'yes' || previousResponse.response === 'yes_pending_job') ? ' Your previous assignment has been removed.' : ''),
+            'no': '❌ **Understood!** You have declined participation in this operation.' + (previousResponse && (previousResponse.response === 'yes' || previousResponse.response === 'yes_pending_job') ? ' Your previous assignment has been removed.' : '')
         };
 
-        await interaction.reply({
-            content: responseMessages[response] + `\n\n**Operation**: ${operation.name}\n**Time**: ${operation.time}\n**Currently Attending**: ${operation.attendingCount}`,
-            flags: 64
-        });
+        try {
+            await interaction.reply({
+                content: responseMessages[response] + `\n\n**Operation**: ${operation.name}\n**Time**: ${operation.time}\n**Currently Attending**: ${operation.attendingCount}`,
+                flags: 64
+            });
+        } catch (error) {
+            console.error(`Failed to send response to ${interaction.user.tag}:`, error.message);
+        }
 
         console.log(`📋 Operation Response: ${interaction.user.tag} responded "${response}" to operation "${operation.name}" (Attending: ${operation.attendingCount})`);
     },
@@ -1257,10 +1243,21 @@ module.exports = {
         if (operation.operationRoleId) {
             try {
                 const guild = await global.client.guilds.fetch(operation.guildId);
-                const member = await guild.members.fetch(interaction.user.id);
-                const operationRole = guild.roles.cache.get(operation.operationRoleId);
+                if (!guild) {
+                    throw new Error('Guild not found');
+                }
                 
-                if (operationRole && !member.roles.cache.has(operation.operationRoleId)) {
+                const member = await guild.members.fetch(interaction.user.id);
+                if (!member) {
+                    throw new Error('Member not found in guild');
+                }
+                
+                const operationRole = guild.roles.cache.get(operation.operationRoleId);
+                if (!operationRole) {
+                    throw new Error('Operation role not found');
+                }
+                
+                if (!member.roles.cache.has(operation.operationRoleId)) {
                     await member.roles.add(operationRole);
                     console.log(`✅ Added operation role to ${member.user.tag} for job: ${selectedJob}`);
                 }
@@ -1272,7 +1269,12 @@ module.exports = {
                     }
                 }
             } catch (error) {
-                console.error('Error adding operation role:', error);
+                console.error(`Error adding operation role to ${interaction.user.tag}:`, error.message);
+                // Still allow the assignment to proceed even if role addition fails
+                await interaction.followUp({
+                    content: `⚠️ **Warning**: Your job assignment was saved but there was an issue adding the operation role. Please contact an administrator.`,
+                    flags: 64
+                });
             }
         }
 
@@ -1601,15 +1603,21 @@ module.exports = {
                         embeds: [operationEmbed],
                         components: [responseRow]
                     });
-                    const status = member.presence?.status || 'offline';
-                    const statusIcon = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
-                    console.log(`✅ DM sent successfully to ${member.user.tag} ${statusIcon} ${status}`);
+                    console.log(`✅ DM sent successfully to ${member.user.tag}`);
                     successCount++;
+                    
+                    // Small delay to prevent rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 } catch (error) {
-                    const status = member.presence?.status || 'offline';
-                    const statusIcon = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
-                    console.error(`❌ Failed to send DM to ${member.user.tag} ${statusIcon} ${status}:`, error.message);
+                    console.error(`❌ Failed to send DM to ${member.user.tag}: ${error.message}`);
                     failCount++;
+                    
+                    // Try to handle common DM errors gracefully
+                    if (error.code === 50007) {
+                        console.log(`   └─ User ${member.user.tag} has DMs disabled`);
+                    } else if (error.code === 50001) {
+                        console.log(`   └─ Missing access to DM ${member.user.tag}`);
+                    }
                 }
             }
             
@@ -1930,15 +1938,4 @@ module.exports = {
         return operationSchedules;
     },
 
-    formatTimeEST(date) {
-        // Convert to EST (UTC-5)
-        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
-        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(estDate.getUTCDate()).padStart(2, '0');
-        const year = estDate.getUTCFullYear();
-        const hours = String(estDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
-        
-        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
-    }
 };
