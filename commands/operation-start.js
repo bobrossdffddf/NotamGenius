@@ -598,9 +598,11 @@ module.exports = {
 
             console.log(`👥 Found ${membersWithRole.size} members with role "${targetRole.name}"`);
             
-            // Log each member for debugging
+            // Log each member for debugging with online status
             for (const [memberId, member] of membersWithRole) {
-                console.log(`   - ${member.user.tag} (${memberId})`);
+                const status = member.presence?.status || 'offline';
+                const statusIcon = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
+                console.log(`   - ${member.user.tag} (${memberId}) ${statusIcon} ${status}`);
             }
 
             if (membersWithRole.size === 0) {
@@ -1599,10 +1601,14 @@ module.exports = {
                         embeds: [operationEmbed],
                         components: [responseRow]
                     });
-                    console.log(`✅ DM sent successfully to ${member.user.tag}`);
+                    const status = member.presence?.status || 'offline';
+                    const statusIcon = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
+                    console.log(`✅ DM sent successfully to ${member.user.tag} ${statusIcon} ${status}`);
                     successCount++;
                 } catch (error) {
-                    console.error(`❌ Failed to send DM to ${member.user.tag}:`, error.message);
+                    const status = member.presence?.status || 'offline';
+                    const statusIcon = status === 'online' ? '🟢' : status === 'idle' ? '🟡' : status === 'dnd' ? '🔴' : '⚫';
+                    console.error(`❌ Failed to send DM to ${member.user.tag} ${statusIcon} ${status}:`, error.message);
                     failCount++;
                 }
             }
