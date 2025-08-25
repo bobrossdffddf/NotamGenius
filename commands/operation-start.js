@@ -486,7 +486,7 @@ module.exports = {
                 // Create operation role
                 scheduleOperationRole = await interaction.guild.roles.create({
                     name: scheduleOperationRoleName,
-                    color: '#FF6B35',
+                    color: 0xFF6B35,
                     mentionable: true,
                     reason: `Operation ${operationName} participant role`
                 });
@@ -798,7 +798,7 @@ module.exports = {
             // Create operation role
             const operationRole = await guild.roles.create({
                 name: roleName,
-                color: '#FF4500',
+                color: 0xFF4500,
                 mentionable: true,
                 reason: `Operation ${operationName} role`
             });
@@ -1120,10 +1120,25 @@ module.exports = {
                             .setTimestamp(new Date())
                             .setFooter(originalEmbed.footer);
 
-                        // Update fields, especially the attending count
+                        // Update fields, especially the attending count and positions
                         const fields = originalEmbed.fields.map(field => {
                             if (field.name === '👥 Currently Attending') {
                                 return { name: field.name, value: operation.attendingCount.toString(), inline: field.inline };
+                            }
+                            if (field.name === '📍 Positions') {
+                                // Update positions to show current assignments (removing people who responded "no")
+                                const positionsWithAssignments = operation.availableJobs.map(job => {
+                                    const assignedUsers = Array.from(operation.jobAssignments.entries())
+                                        .filter(([userId, assignedJob]) => assignedJob === job.name)
+                                        .map(([userId]) => `<@${userId}>`)
+                                        .join(' ');
+                                    
+                                    const capacity = job.maxCount ? ` (${job.maxCount} slots)` : ' (unlimited)';
+                                    const index = operation.availableJobs.indexOf(job) + 1;
+                                    return assignedUsers ? `${index}. ${job.name}${capacity} - ${assignedUsers}` : `${index}. ${job.name}${capacity}`;
+                                }).join('\n');
+                                
+                                return { name: field.name, value: positionsWithAssignments || 'No positions assigned yet', inline: field.inline };
                             }
                             return field;
                         });
@@ -1137,7 +1152,7 @@ module.exports = {
             }
         }
 
-        // Update details message with new attending count
+        // Update details message with new attending count AND positions
         if (operation.detailsMessageId) {
             try {
                 const guild = await global.client.guilds.fetch(operation.guildId);
@@ -1146,10 +1161,28 @@ module.exports = {
                     const detailsMessage = await detailsChannel.messages.fetch(operation.detailsMessageId);
                     const originalEmbed = detailsMessage.embeds[0];
 
-                    // Update the consolidated NOTAM content with new attending count
-                    const updatedContent = originalEmbed.description.replace(
+                    // Update the content with new attending count
+                    let updatedContent = originalEmbed.description.replace(
                         /\*\*👥 CURRENTLY ATTENDING:\*\* \d+/,
                         `**👥 CURRENTLY ATTENDING:** ${operation.attendingCount}`
+                    );
+
+                    // Update positions section with current assignments (removing people who responded "no")
+                    const positionsWithAssignments = operation.availableJobs.map(job => {
+                        const assignedUsers = Array.from(operation.jobAssignments.entries())
+                            .filter(([userId, assignedJob]) => assignedJob === job.name)
+                            .map(([userId]) => `<@${userId}>`)
+                            .join(' ');
+                        
+                        const capacity = job.maxCount ? ` (${job.maxCount} slots)` : ' (unlimited)';
+                        const index = operation.availableJobs.indexOf(job) + 1;
+                        return assignedUsers ? `${index}. ${job.name}${capacity} - ${assignedUsers}` : `${index}. ${job.name}${capacity}`;
+                    }).join('\n');
+                    
+                    // Replace the positions section
+                    updatedContent = updatedContent.replace(
+                        /### \*\*📍 POSITIONS:\*\*\n[\s\S]*?\n\n### \*\*📝 ADDITIONAL NOTES:/,
+                        `### **📍 POSITIONS:**\n${positionsWithAssignments}\n\n### **📝 ADDITIONAL NOTES:`
                     );
 
                     const updatedEmbed = new EmbedBuilder()

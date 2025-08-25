@@ -1688,5 +1688,219 @@
       "color": 16739125,
       "timestamp": "2025-08-25T03:34:08.733Z"
     }
+  },
+  "op_1756092978403": {
+    "name": "e",
+    "time": "8/25 at 18:30 EST",
+    "details": "e",
+    "leader": "e",
+    "availableJobs": [
+      {
+        "name": "e",
+        "maxCount": null
+      }
+    ],
+    "notes": "None",
+    "responses": {
+      "848356730256883744": {
+        "response": "no",
+        "username": "justawacko_",
+        "timestamp": "2025-08-25T03:36:49.135Z"
+      },
+      "1229209804057346091": {
+        "response": "yes",
+        "job": "e",
+        "username": "alexbillyjoil",
+        "timestamp": "2025-08-25T03:37:52.934Z"
+      }
+    },
+    "jobAssignments": {
+      "1229209804057346091": "e"
+    },
+    "scheduledBy": "848356730256883744",
+    "guildId": "1403618918928613517",
+    "attendingCount": 1,
+    "operationRoleId": "1409380845126418602",
+    "detailsMessageId": "1409380857730302024",
+    "categoryId": "1409380846745419936",
+    "voiceChannelId": "1409380851141181542",
+    "infoChannelId": "1409380853355778152",
+    "chatChannelId": "1409380854899413003",
+    "membersWithRole": [
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1754795141540,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "155149108183695360",
+        "avatar": null,
+        "banner": null,
+        "flags": 0,
+        "avatarDecorationData": null,
+        "displayName": "Dyno",
+        "roles": [
+          "1403937322029944846",
+          "1409027687736938537",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/155149108183695360/b4fdfc64edff74c37e1574d34fad66c2.webp",
+        "avatarDecorationURL": null
+      },
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1754719228354,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "1229209804057346091",
+        "avatar": null,
+        "banner": null,
+        "flags": 0,
+        "avatarDecorationData": null,
+        "displayName": "db25",
+        "roles": [
+          "1408854630816813167",
+          "1403914774269395036",
+          "1409027687736938537",
+          "1407780166754766910",
+          "1403918629518577785",
+          "1408995373455904789",
+          "1408995322021154846",
+          "1403915087692959815",
+          "1403619143667679252",
+          "1407780130654523503",
+          "1408942834060361740",
+          "1408943018991423571",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/embed/avatars/1.png",
+        "displayBannerURL": null,
+        "avatarDecorationURL": null
+      },
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1754795772549,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "410138706490425344",
+        "avatar": null,
+        "banner": null,
+        "flags": 0,
+        "avatarDecorationData": null,
+        "displayName": "Embed Generator",
+        "roles": [
+          "1403940112995319808",
+          "1409027687736938537",
+          "1403939968744951903",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/410138706490425344/aaa83f8808bc162de1291f3e40513333.webp",
+        "avatarDecorationURL": null
+      },
+      {
+        "guildId": "1403618918928613517",
+        "joinedTimestamp": 1756089775562,
+        "premiumSinceTimestamp": null,
+        "nickname": null,
+        "pending": false,
+        "communicationDisabledUntilTimestamp": null,
+        "userId": "848356730256883744",
+        "avatar": null,
+        "banner": null,
+        "flags": 11,
+        "avatarDecorationData": null,
+        "displayName": "Wacko",
+        "roles": [
+          "1408854630816813167",
+          "1403917961088991323",
+          "1403914774269395036",
+          "1409027687736938537",
+          "1407780166754766910",
+          "1409300434967072888",
+          "1403914572674633890",
+          "1408995373455904789",
+          "1403918495829463173",
+          "1408995322021154846",
+          "1403937434508464158",
+          "1409300377463165079",
+          "1408265135734128640",
+          "1409008730137169980",
+          "1407780130654523503",
+          "1408942834060361740",
+          "1408943018991423571",
+          "1409300512062574663",
+          "1403618918928613517"
+        ],
+        "avatarURL": null,
+        "bannerURL": null,
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/848356730256883744/10f1a4dc78b6acc67a2e1e8e3d2a2698.webp",
+        "displayBannerURL": null,
+        "avatarDecorationURL": null
+      }
+    ],
+    "targetRole": {
+      "guild": "1403618918928613517",
+      "icon": null,
+      "unicodeEmoji": null,
+      "id": "1409027687736938537",
+      "name": "Test role",
+      "color": 0,
+      "colors": {
+        "primaryColor": 0,
+        "secondaryColor": null,
+        "tertiaryColor": null
+      },
+      "hoist": false,
+      "rawPosition": 1,
+      "permissions": "0",
+      "managed": false,
+      "mentionable": false,
+      "flags": 0,
+      "tags": {},
+      "createdTimestamp": 1756008779225
+    },
+    "responseRow": {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "custom_id": "op_response_yes_op_1756092978403",
+          "label": "✅ Yes, I'll Join",
+          "style": 3
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_tbd_op_1756092978403",
+          "label": "❔ To Be Determined",
+          "style": 2
+        },
+        {
+          "type": 2,
+          "custom_id": "op_response_no_op_1756092978403",
+          "label": "❌ No Thank You",
+          "style": 4
+        }
+      ]
+    },
+    "operationEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: E**\n**📅 DATE & TIME:** 8/25 at 18:30 EST\n**👨‍✈️ OPERATION COMMANDER:** e\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\ne\n\n### **📍 POSITIONS:**\n1. e (unlimited)\n\n### **📝 ADDITIONAL NOTES:**\nNone\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756092978403\n**📤 ISSUED BY:** justawacko_ | 8/25/2025, 3:36:20 AM",
+      "color": 16739125
+    },
+    "channelEmbed": {
+      "description": "## 🔴 OPERATIONAL DEPLOYMENT NOTICE\n### 📡 NOTICE TO AIRMEN (NOTAM) - OPERATION ALERT\n_______________________________________________\n### **OPERATION DESIGNATION: E**\n**📅 DATE & TIME:** 8/25 at 18:30 EST\n**👨‍✈️ OPERATION COMMANDER:** e\n**🔐 CLASSIFICATION:** RESTRICTED\n**👥 CURRENTLY ATTENDING:** 0\n_________________________________________________\n### **📋 OPERATION DETAILS:**\ne\n\n### **📍 POSITIONS:**\n1. e (unlimited)\n\n### **📝 ADDITIONAL NOTES:**\nNone\n_________________________________________________\n### **🎯 PERSONNEL RESPONSE REQUIRED:**\nConfirm your operational availability using the response options below.\n**NOTE:** If you join, you'll be able to select your specific position.\n________________________________________________________\n**🆔 OPERATION ID:** op_1756092978403\n**📤 ISSUED BY:** justawacko_ | 8/25/2025, 3:36:20 AM",
+      "color": 16739125,
+      "timestamp": "2025-08-25T03:36:20.943Z"
+    }
   }
 }

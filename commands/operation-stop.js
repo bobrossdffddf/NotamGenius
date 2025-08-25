@@ -79,15 +79,17 @@ module.exports = {
     },
 
     async handleOperationStopSelection(interaction) {
+        // Defer reply immediately to prevent timeout
+        await interaction.deferReply({ flags: 64 });
+        
         const operationId = interaction.values[0];
         const operationStart = require('./operation-start');
         const activeOperations = operationStart.getActiveOperations();
         const operation = activeOperations.get(operationId);
 
         if (!operation) {
-            await interaction.reply({
-                content: '❌ **Error**: Operation not found.',
-                flags: 64
+            await interaction.editReply({
+                content: '❌ **Error**: Operation not found.'
             });
             return;
         }
