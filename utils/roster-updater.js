@@ -4,7 +4,7 @@ const { guildConfigManager } = require('../config/guild-config');
 class RosterUpdater {
     constructor(client) {
         this.client = client;
-        this.updateInterval = 2 * 60 * 1000; // 2 minutes (more frequent)
+        this.updateInterval = 5 * 60 * 1000; // 5 minutes as requested
         this.lastMessageId = null;
         this.lastUpdateTime = 0; // Track last update time
         
@@ -18,7 +18,7 @@ class RosterUpdater {
         // Set up recurring updates
         setInterval(() => this.updateRoster(), this.updateInterval);
         
-        console.log('📋 Roster auto-updater started (updates every 2 minutes)');
+        console.log('📋 Roster auto-updater started (updates every 5 minutes)');
     }
 
     async updateRoster() {
@@ -170,7 +170,7 @@ class RosterUpdater {
             });
 
             embed.setFooter({ 
-                text: `Last Updated: ${new Date().toLocaleTimeString()} • Updates every 2 minutes`
+                text: `Last Updated: ${new Date().toLocaleTimeString()} • Updates every 5 minutes`
             });
 
             const newMessage = await channel.send({ embeds: [embed] });

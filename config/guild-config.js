@@ -65,9 +65,16 @@ class GuildConfigManager {
         const config = this.getGuildConfig(guild.id);
         console.log(`🔍 Auto-discovering configuration for guild: ${guild.name}`);
 
-        // Auto-discover certification roles by name
-        if (config.autoDiscoverRoles) {
-            // Operation certification roles
+        // Use specific role IDs for roster (override auto-discovery)
+        if (guild.id === '1409326088529641705') { // Test guild
+            // Use the specific certified role IDs provided
+            config.certificationRoles_apply = {
+                'f22': { name: 'F-22 Certified', roleId: '1409300377463165079' },
+                'f35': { name: 'F-35 Certified', roleId: '1409300434967072888' },
+                'f16': { name: 'F-16 Certified', roleId: '1409300512062574663' }
+            };
+        } else if (config.autoDiscoverRoles) {
+            // Auto-discover certification roles by name for other guilds
             const f22Role = guild.roles.cache.find(r => r.name.toLowerCase().includes('f-22') || r.name.toLowerCase().includes('f22'));
             const f16Role = guild.roles.cache.find(r => r.name.toLowerCase().includes('f-16') || r.name.toLowerCase().includes('f16'));
             const f35Role = guild.roles.cache.find(r => r.name.toLowerCase().includes('f-35') || r.name.toLowerCase().includes('f35'));
