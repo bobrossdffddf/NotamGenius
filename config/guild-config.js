@@ -66,7 +66,7 @@ class GuildConfigManager {
         console.log(`🔍 Auto-discovering configuration for guild: ${guild.name}`);
 
         // Use specific role IDs for roster (override auto-discovery)
-        if (guild.id === '1409326088529641705') { // Test guild
+        if (guild.id === '1403618918928613517') { // ATC24 | USDoD USAF x USMC guild
             // Use the specific certified role IDs provided
             config.certificationRoles_apply = {
                 'f22': { name: 'F-22 Certified', roleId: '1409300377463165079' },
