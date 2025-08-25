@@ -102,7 +102,7 @@ module.exports = {
                 .addFields(
                     { name: '👤 Applicant', value: `${user.tag} (${user.id})`, inline: true },
                     { name: '📋 Requested Certification', value: certification.name, inline: true },
-                    { name: '📅 Applied At', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true },
+                    { name: '📅 Applied At', value: this.formatTimeEST(new Date()), inline: true },
                     { name: '📊 Status', value: '⏳ Pending Review', inline: true },
                     { name: '🏷️ Trainee Role', value: traineeRole ? '✅ Assigned' : '❌ Not Found', inline: true }
                 )
@@ -143,5 +143,17 @@ module.exports = {
                 flags: 64
             });
         }
+    },
+
+    formatTimeEST(date) {
+        // Convert to EST (UTC-5)
+        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
+        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(estDate.getUTCDate()).padStart(2, '0');
+        const year = estDate.getUTCFullYear();
+        const hours = String(estDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
+        
+        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
     }
 };

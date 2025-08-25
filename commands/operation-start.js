@@ -10,7 +10,7 @@ const activeOperations = new Map();
 const operationSchedules = new Map();
 
 // Target role ID for operation notifications
-const TARGET_ROLE_ID = '1409027687736938537';
+const TARGET_ROLE_ID = '1407780166754766910';
 
 // Operation details channel ID
 const OPERATION_DETAILS_CHANNEL_ID = '1403915496256176148';
@@ -601,9 +601,8 @@ module.exports = {
                 return;
             }
 
-            // Format according to user's exact specification
-            const currentDate = new Date();
-            const timeStamp = currentDate.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
+            // Format according to user's exact specification - MM/DD/YYYY @ HHMM EST
+            const timeStamp = this.formatTimeEST(new Date());
 
             // Create Discord timestamp from operation time - automatically shows in user's timezone
             const timeRegex = /(\d{1,2})\/(\d{1,2})\s+at\s+(\d{1,2}):(\d{2})\s+(\w+)/;
@@ -945,7 +944,7 @@ module.exports = {
                     { name: '🎯 Objective', value: objective },
                     { name: '📝 Special Instructions', value: notes },
                     { name: '🏷️ Operation Role', value: `<@&${operationRole.id}>`, inline: true },
-                    { name: '⏰ End Time', value: `<t:${Math.floor(endTime / 1000)}:F>`, inline: true }
+                    { name: '⏰ End Time', value: this.formatTimeEST(new Date(endTime)), inline: true }
                 )
                 .setTimestamp()
                 .setFooter({ text: `Operation ID: ${operationId}` });
@@ -1909,5 +1908,17 @@ module.exports = {
 
     getOperationSchedules() {
         return operationSchedules;
+    },
+
+    formatTimeEST(date) {
+        // Convert to EST (UTC-5)
+        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
+        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(estDate.getUTCDate()).padStart(2, '0');
+        const year = estDate.getUTCFullYear();
+        const hours = String(estDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
+        
+        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
     }
 };

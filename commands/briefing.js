@@ -59,11 +59,23 @@ module.exports = {
             .addFields(
                 { name: '📋 Additional Information', value: message },
                 { name: '👤 Briefing Officer', value: interaction.user.tag, inline: true },
-                { name: '📅 Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                { name: '📅 Time', value: this.formatTimeEST(new Date()), inline: true }
             )
             .setColor(info.color)
             .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
+    },
+
+    formatTimeEST(date) {
+        // Convert to EST (UTC-5)
+        const estDate = new Date(date.getTime() - (5 * 60 * 60 * 1000));
+        const month = String(estDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(estDate.getUTCDate()).padStart(2, '0');
+        const year = estDate.getUTCFullYear();
+        const hours = String(estDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(estDate.getUTCMinutes()).padStart(2, '0');
+        
+        return `${month}/${day}/${year} @ ${hours}${minutes} EST`;
     }
 };

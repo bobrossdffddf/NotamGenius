@@ -144,24 +144,7 @@
     "active": false,
     "scheduled": true,
     "availableJobs": [],
-    "jobAssignments": {}
-  },
-  "op_1756079847372": {
-    "name": "Universe Sightsee",
-    "commander": "1229209804057346091",
-    "startTime": 1756079850472,
-    "endTime": null,
-    "duration": null,
-    "objective": "Transport government officials such as POTUS, VPOTUS, SecDef, Government senators / congressmen, SPACE-A Travel citizens, etc.",
-    "classification": "RESTRICTED",
-    "notes": "Testing out the bot with this. This is a pop up / less than 24 hour notice of operation so we will NOT mandate certification. Please show up if you can.",
-    "roleId": "1409325769183858831",
-    "categoryId": "1409325770815311913",
-    "voiceChannelId": "1409325776091877397",
-    "infoChannelId": "1409325778054811818",
-    "chatChannelId": "1409325779871076364",
-    "guildId": "1403618918928613517",
-    "active": true,
-    "scheduled": true
+    "jobAssignments": {},
+    "responses": {}
   }
 }
