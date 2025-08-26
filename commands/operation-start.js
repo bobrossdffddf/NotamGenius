@@ -703,7 +703,7 @@ module.exports = {
         // Create modal to collect operation details
         const modal = new ModalBuilder()
             .setCustomId(`operation_schedule_form_${tempId}`)
-            .setTitle(`Schedule Operation - ${readableTime.substring(0, 50)}`);
+            .setTitle('Schedule Operation');
 
         // Operation Name
         const operationNameInput = new TextInputBuilder()
