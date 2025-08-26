@@ -138,13 +138,8 @@ module.exports = {
                 .setName('schedule')
                 .setDescription('Schedule an operation and notify role members')
                 .addStringOption(option =>
-                    option.setName('date')
-                        .setDescription('Operation date (e.g., 9/23 or 12/15)')
-                        .setRequired(true)
-                )
-                .addStringOption(option =>
-                    option.setName('time')
-                        .setDescription('Operation time in EST (e.g., 12:20 or 18:30)')
+                    option.setName('datetime')
+                        .setDescription('Date/time (e.g., "9/23 at 12:20 EST" or Discord timestamp <t:1756175400:t>)')
                         .setRequired(true)
                 )
         )
@@ -315,10 +310,20 @@ module.exports = {
             return;
         }
 
-        // Get date and time from command options
-        const operationDate = interaction.options.getString('date');
-        const operationTime = interaction.options.getString('time');
-        const fullDateTime = `${operationDate} at ${operationTime} EST`;
+        // Get datetime from command options
+        const datetimeInput = interaction.options.getString('datetime');
+        let fullDateTime;
+        
+        // Check if it's a Discord timestamp format
+        const timestampMatch = datetimeInput.match(/<t:(\d+):([dDfFtTR])>/);
+        if (timestampMatch) {
+            const timestamp = parseInt(timestampMatch[1]);
+            const date = new Date(timestamp * 1000);
+            fullDateTime = `${date.toLocaleDateString('en-US', {month: 'numeric', day: 'numeric'})} at ${date.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})} EST`;
+        } else {
+            // Use the input as-is for traditional format
+            fullDateTime = datetimeInput;
+        }
 
         // Store the time for use in modal handling
         const tempId = Date.now().toString();

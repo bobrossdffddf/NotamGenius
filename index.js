@@ -85,6 +85,12 @@ client.once(Events.ClientReady, async readyClient => {
         console.log(`🎉 Successfully registered ${totalRegistered} total command instances across all guilds!`);
         console.log('💡 Commands should appear instantly in Discord servers');
         
+        // Show operation configuration
+        console.log('\n📋 Operation Configuration:');
+        console.log(`🎯 Operations will notify role: <@&1409027687736938537>`);
+        console.log(`📢 Operations will be posted to channel: <#1403915496256176148>`);
+        console.log('⚡ Ready to manage military operations!');
+        
     } catch (error) {
         console.error('❌ Error during command registration:', error);
     }

@@ -44,6 +44,9 @@ class RosterUpdater {
                 'USAF | Air Force One Certified': '1408942834060361740', 
                 'USMC | Marine One Certified': '1408943018991423571',
                 'Ground Operations Certified': '1408995373455904789',
+                'F-35 Lightning II Certified': '1409300434967072888',
+                'F-22 Raptor Certified': '1409300377463165079',
+                'F-16 Fighting Falcon Certified': '1409300512062574663',
                 'Trainee': '1408854677784887449'
             };
 
