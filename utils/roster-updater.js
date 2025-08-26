@@ -67,7 +67,9 @@ class RosterUpdater {
                     'F-35 Certified': '1409300434967072888', 
                     'F-16 Certified': '1409300512062574663',
                     'ATC Certified': '1408995322021154846',
-                    'Ground Operations Certified': '1408995373455904789'
+                    'Ground Operations Certified': '1408995373455904789',
+                    'USAF | Air Force One Certified': '1408943018991423571',
+                    'USMC | Marine One Certified': '1408942834060361740'
                 };
                 console.log('🎯 Using hardcoded certified role IDs for roster');
             } else {
